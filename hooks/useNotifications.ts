@@ -1,0 +1,113 @@
+import { useState, useEffect, useRef } from 'react'
+import { Lead } from '@/lib/supabase'
+import { toast } from '@/hooks/use-toast'
+
+// Função para tocar som de notificação
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
+    audio.volume = 0.3
+    audio.play().catch(() => {
+      // Ignora erros de autoplay
+    })
+  } catch (error) {
+    // Ignora erros de áudio
+  }
+}
+
+export function useNotifications(leads: Lead[]) {
+  const [notificationCount, setNotificationCount] = useState(0)
+  const [notifications, setNotifications] = useState<Array<{
+    id: string
+    message: string
+    timestamp: Date
+    read: boolean
+  }>>([])
+  const processedLeads = useRef<Set<number>>(new Set())
+  const isInitialized = useRef(false)
+
+  useEffect(() => {
+    console.log('🔔 useNotifications: leads atualizados', leads.length)
+    
+    // Na primeira execução, marcar todos os leads existentes como processados
+    if (!isInitialized.current && leads.length > 0) {
+      console.log('🔔 Inicializando notificações com', leads.length, 'leads')
+      leads.forEach(lead => processedLeads.current.add(lead.id!))
+      isInitialized.current = true
+      return
+    }
+
+    // Detectar novos leads
+    const newLeads = leads.filter(lead => !processedLeads.current.has(lead.id!))
+    
+    console.log('🔔 Novos leads detectados:', newLeads.length)
+    
+    if (newLeads.length > 0) {
+      // Processar novos leads
+      newLeads.forEach(lead => {
+        processedLeads.current.add(lead.id!)
+        
+        console.log('🔔 Processando novo lead:', lead.name)
+        
+        const notification = {
+          id: `lead-${lead.id}-${Date.now()}`,
+          message: `Novo lead: ${lead.name}`,
+          timestamp: new Date(lead.created_at),
+          read: false
+        }
+        
+        setNotifications(prev => {
+          const newNotifications = [notification, ...prev]
+          // Manter apenas as 5 notificações mais recentes
+          return newNotifications.slice(0, 5)
+        })
+        
+        setNotificationCount(prev => Math.min(prev + 1, 5))
+        
+        // Mostrar toast de notificação
+        toast({
+          title: "Novo Lead!",
+          description: `Lead "${lead.name}" foi adicionado ao sistema.`,
+          duration: 5000,
+        })
+        
+        // Tocar som de notificação
+        playNotificationSound()
+      })
+    }
+  }, [leads])
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(notification => ({ ...notification, read: true })))
+    setNotificationCount(0)
+  }
+
+  const markAsRead = (notificationId: string) => {
+    setNotifications(prev => {
+      const updatedNotifications = prev.map(notification => 
+        notification.id === notificationId 
+          ? { ...notification, read: true }
+          : notification
+      )
+      
+      // Recalcular o contador baseado nas notificações não lidas
+      const unreadCount = updatedNotifications.filter(n => !n.read).length
+      setNotificationCount(Math.min(unreadCount, 5))
+      
+      return updatedNotifications
+    })
+  }
+
+  const clearNotifications = () => {
+    setNotifications([])
+    setNotificationCount(0)
+  }
+
+  return {
+    notificationCount,
+    notifications,
+    markAllAsRead,
+    markAsRead,
+    clearNotifications
+  }
+}

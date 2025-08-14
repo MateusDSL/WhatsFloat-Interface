@@ -370,19 +370,19 @@ export default function LeadsPage() {
     try {
       const lead = leads.find(l => l.id === leadId)
       if (lead && lead.id !== undefined && lead.id !== null) {
-        console.log('🔄 Alternando beacon do lead:', leadId, 'de', lead.beacon, 'para', !lead.beacon)
+                 console.log('🔄 Alternando becon do lead:', leadId, 'de', lead.beacon, 'para', !lead.beacon)
         await updateLead(lead.id, { beacon: !lead.beacon })
         toast({
-          title: "Beacon atualizado",
-          description: `Beacon ${!lead.beacon ? "ativado" : "desativado"} para ${lead.name}.`,
+                     title: "Becon atualizado",
+           description: `Becon ${!lead.beacon ? "ativado" : "desativado"} para ${lead.name}.`,
           variant: "success",
         })
       }
     } catch (error) {
-      console.error('❌ Erro ao alternar beacon:', error)
+               console.error('❌ Erro ao alternar becon:', error)
       toast({
         title: "Erro",
-        description: "Erro ao atualizar beacon do lead.",
+                 description: "Erro ao atualizar becon do lead.",
         variant: "destructive",
       })
     }
@@ -434,14 +434,14 @@ export default function LeadsPage() {
       await Promise.all(selectedLeads.map(id => updateLead(id, { beacon: beaconValue })))
       setSelectedLeads([])
               toast({
-          title: "Beacon atualizado",
-          description: `Beacon de ${leadsToUpdate} leads foi ${beaconValue ? "ativado" : "desativado"}.`,
+                   title: "Becon atualizado",
+         description: `Becon de ${leadsToUpdate} leads foi ${beaconValue ? "ativado" : "desativado"}.`,
           variant: "success",
         })
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao atualizar beacon dos leads.",
+                 description: "Erro ao atualizar becon dos leads.",
         variant: "destructive",
       })
     }
@@ -525,7 +525,7 @@ export default function LeadsPage() {
                  </Card>
                  <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                     <CardTitle className="text-sm font-semibold text-gray-900">Beacon</CardTitle>
+                     <CardTitle className="text-sm font-semibold text-gray-900">Becon</CardTitle>
                      <div className="p-2 bg-gray-100 rounded-lg">
                        <Tag className="h-4 w-4 text-green-600" />
                      </div>
@@ -661,13 +661,13 @@ export default function LeadsPage() {
                        <DropdownMenuTrigger asChild>
                          <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200">
                            <Tag className="w-4 h-4 mr-2" />
-                           Beacon
+                           Becon
                          </Button>
                        </DropdownMenuTrigger>
                        <DropdownMenuContent>
-                         <DropdownMenuItem onClick={() => handleBulkBeaconToggle(true)}>Ativar Beacon</DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleBulkBeaconToggle(true)}>Ativar Becon</DropdownMenuItem>
                          <DropdownMenuItem onClick={() => handleBulkBeaconToggle(false)}>
-                           Desativar Beacon
+                           Desativar Becon
                          </DropdownMenuItem>
                        </DropdownMenuContent>
                      </DropdownMenu>
@@ -710,7 +710,7 @@ export default function LeadsPage() {
                          <TableHead className="w-28">Medium</TableHead>
                          <TableHead className="w-32">Campanha</TableHead>
                          <TableHead className="w-28">Termo</TableHead>
-                        <TableHead className="w-20">Beacon</TableHead>
+                                                   <TableHead className="w-20">Becon</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

@@ -16,8 +16,7 @@ export function SidebarWrapper() {
     notifications, 
     markAsRead, 
     markAllAsRead, 
-    clearNotifications,
-    addTestNotification
+    clearNotifications
   } = useNotifications(leads)
 
   const handleLogout = async () => {
@@ -54,7 +53,6 @@ export function SidebarWrapper() {
       onMarkAllAsRead={markAllAsRead}
       onClearNotifications={clearNotifications}
       onLogout={handleLogout}
-      onTestNotification={addTestNotification}
     />
   )
 }

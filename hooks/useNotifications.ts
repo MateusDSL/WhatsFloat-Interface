@@ -119,37 +119,13 @@ export function useNotifications(leads: Lead[]) {
     setNotificationCount(0)
   }
 
-  // Função de teste para adicionar notificação manual
-  const addTestNotification = () => {
-    const testNotification = {
-      id: `test-${Date.now()}`,
-      message: `Notificação de teste - ${new Date().toLocaleTimeString()}`,
-      timestamp: new Date(),
-      read: false
-    }
-    
-    setNotifications(prev => {
-      const newNotifications = [testNotification, ...prev]
-      return newNotifications.slice(0, 5)
-    })
-    
-    setNotificationCount(prev => Math.min(prev + 1, 5))
-    
-    toast({
-      title: "Teste de Notificação!",
-      description: "Esta é uma notificação de teste.",
-      duration: 3000,
-    })
-    
-    playNotificationSound()
-  }
+
 
   return {
     notificationCount,
     notifications,
     markAllAsRead,
     markAsRead,
-    clearNotifications,
-    addTestNotification
+    clearNotifications
   }
 }

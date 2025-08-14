@@ -35,6 +35,7 @@ interface SidebarProps {
   onMarkAllAsRead?: () => void
   onClearNotifications?: () => void
   onLogout?: () => void
+  onTestNotification?: () => void
 }
 
 const menuItems = [
@@ -84,7 +85,8 @@ export function Sidebar({
   onMarkAsRead, 
   onMarkAllAsRead, 
   onClearNotifications,
-  onLogout
+  onLogout,
+  onTestNotification
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
@@ -188,6 +190,16 @@ export function Sidebar({
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sair
+            </Button>
+            {/* Botão de teste temporário para notificações */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={onTestNotification}
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Teste Notif
             </Button>
           </div>
         ) : (

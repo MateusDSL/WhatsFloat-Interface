@@ -26,28 +26,36 @@ export function useNotifications(leads: Lead[]) {
   const processedLeads = useRef<Set<number>>(new Set())
   const isInitialized = useRef(false)
 
+  console.log('🔔 useNotifications renderizado com', leads.length, 'leads')
+  console.log('🔔 Leads IDs:', leads.map(l => l.id))
+  console.log('🔔 Processados:', Array.from(processedLeads.current))
+
   useEffect(() => {
     console.log('🔔 useNotifications: leads atualizados', leads.length)
     
+    // Filtrar leads válidos (com ID)
+    const validLeads = leads.filter(lead => lead.id !== null && lead.id !== undefined)
+    
     // Na primeira execução, marcar todos os leads existentes como processados
-    if (!isInitialized.current && leads.length > 0) {
-      console.log('🔔 Inicializando notificações com', leads.length, 'leads')
-      leads.forEach(lead => processedLeads.current.add(lead.id!))
+    if (!isInitialized.current && validLeads.length > 0) {
+      console.log('🔔 Inicializando notificações com', validLeads.length, 'leads')
+      validLeads.forEach(lead => processedLeads.current.add(lead.id!))
       isInitialized.current = true
       return
     }
 
     // Detectar novos leads
-    const newLeads = leads.filter(lead => !processedLeads.current.has(lead.id!))
+    const newLeads = validLeads.filter(lead => !processedLeads.current.has(lead.id!))
     
     console.log('🔔 Novos leads detectados:', newLeads.length)
+    console.log('🔔 IDs dos novos leads:', newLeads.map(l => l.id))
     
     if (newLeads.length > 0) {
       // Processar novos leads
       newLeads.forEach(lead => {
         processedLeads.current.add(lead.id!)
         
-        console.log('🔔 Processando novo lead:', lead.name)
+        console.log('🔔 Processando novo lead:', lead.name, 'ID:', lead.id)
         
         const notification = {
           id: `lead-${lead.id}-${Date.now()}`,
@@ -56,13 +64,21 @@ export function useNotifications(leads: Lead[]) {
           read: false
         }
         
+        console.log('🔔 Criando notificação:', notification)
+        
         setNotifications(prev => {
           const newNotifications = [notification, ...prev]
           // Manter apenas as 5 notificações mais recentes
-          return newNotifications.slice(0, 5)
+          const result = newNotifications.slice(0, 5)
+          console.log('🔔 Notificações atualizadas:', result.length)
+          return result
         })
         
-        setNotificationCount(prev => Math.min(prev + 1, 5))
+        setNotificationCount(prev => {
+          const newCount = Math.min(prev + 1, 5)
+          console.log('🔔 Contador de notificações atualizado:', newCount)
+          return newCount
+        })
         
         // Mostrar toast de notificação
         toast({
@@ -103,11 +119,37 @@ export function useNotifications(leads: Lead[]) {
     setNotificationCount(0)
   }
 
+  // Função de teste para adicionar notificação manual
+  const addTestNotification = () => {
+    const testNotification = {
+      id: `test-${Date.now()}`,
+      message: `Notificação de teste - ${new Date().toLocaleTimeString()}`,
+      timestamp: new Date(),
+      read: false
+    }
+    
+    setNotifications(prev => {
+      const newNotifications = [testNotification, ...prev]
+      return newNotifications.slice(0, 5)
+    })
+    
+    setNotificationCount(prev => Math.min(prev + 1, 5))
+    
+    toast({
+      title: "Teste de Notificação!",
+      description: "Esta é uma notificação de teste.",
+      duration: 3000,
+    })
+    
+    playNotificationSound()
+  }
+
   return {
     notificationCount,
     notifications,
     markAllAsRead,
     markAsRead,
-    clearNotifications
+    clearNotifications,
+    addTestNotification
   }
 }

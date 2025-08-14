@@ -333,8 +333,8 @@ export default function LeadsPage() {
   }, [dateFilter, sourceFilter, mappedLeads, filteredLeadsForStats])
 
   // Função auxiliar para formatar mensagem de comparação
-  const formatComparisonMessage = (percentageChange: number, hasComparison: boolean) => {
-    if (!hasComparison) {
+  const formatComparisonMessage = (percentageChange: number | undefined, hasComparison: boolean) => {
+    if (!hasComparison || percentageChange === undefined) {
       return "Dados de todos os períodos"
     }
     
@@ -357,9 +357,23 @@ export default function LeadsPage() {
   ).length
 
   const toggleBeacon = async (leadId: number) => {
-    const lead = leads.find(l => l.id === leadId)
-    if (lead && lead.id) {
-      await updateLead(lead.id, { beacon: !lead.beacon })
+    try {
+      const lead = leads.find(l => l.id === leadId)
+      if (lead && lead.id !== undefined && lead.id !== null) {
+        console.log('🔄 Alternando beacon do lead:', leadId, 'de', lead.beacon, 'para', !lead.beacon)
+        await updateLead(lead.id, { beacon: !lead.beacon })
+        toast({
+          title: "Beacon atualizado",
+          description: `Beacon ${!lead.beacon ? "ativado" : "desativado"} para ${lead.name}.`,
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erro ao alternar beacon:', error)
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar beacon do lead.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -673,7 +687,7 @@ export default function LeadsPage() {
                           >
                             <TableCell>
                               <Checkbox
-                                checked={selectedLeads.includes(lead.id)}
+                                checked={selectedLeads.includes(lead.id || 0)}
                                 onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
                                 aria-label={`Selecionar ${lead.name}`}
                               />
@@ -696,7 +710,7 @@ export default function LeadsPage() {
                             <TableCell className="w-20">
                               <Badge
                                 className={`cursor-pointer ${lead.beacon ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"}`}
-                                onClick={() => toggleBeacon(lead.id)}
+                                onClick={() => lead.id && toggleBeacon(lead.id)}
                               >
                                 {lead.beacon ? "Sim" : "Não"}
                               </Badge>

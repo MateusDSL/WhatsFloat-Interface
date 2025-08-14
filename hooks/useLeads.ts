@@ -91,6 +91,7 @@ export function useLeads() {
   // Atualizar lead
   const updateLead = async (id: number, updates: Partial<Lead>) => {
     try {
+      console.log('🔄 Atualizando lead:', id, 'com:', updates)
       const { data, error } = await supabase
         .from('leads')
         .update(updates)
@@ -101,8 +102,16 @@ export function useLeads() {
         throw error
       }
 
+      console.log('✅ Lead atualizado:', data?.[0])
+      
+      // Atualizar estado local imediatamente
+      setLeads(prev => prev.map(lead => 
+        lead.id === id ? { ...lead, ...updates } : lead
+      ))
+      
       return data?.[0]
     } catch (err) {
+      console.error('❌ Erro ao atualizar lead:', err)
       setError(err instanceof Error ? err.message : 'Erro ao atualizar lead')
       throw err
     }
@@ -164,10 +173,14 @@ export function useLeads() {
     if (pollingInterval.current) {
       clearInterval(pollingInterval.current)
     }
-    pollingInterval.current = setInterval(fetchNewLeads, 3000) // A cada 3 segundos
+    pollingInterval.current = setInterval(() => {
+      console.log('🔄 Executando polling...')
+      fetchNewLeads()
+    }, 5000) // A cada 5 segundos para reduzir carga
   }
 
   useEffect(() => {
+    console.log('🚀 Iniciando useLeads...')
     fetchLeads()
     
     // Iniciar polling imediatamente (sem tentar real-time)

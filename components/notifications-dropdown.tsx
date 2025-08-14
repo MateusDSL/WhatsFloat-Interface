@@ -38,6 +38,8 @@ export function NotificationsDropdown({
 }: NotificationsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
+  console.log('🔔 NotificationsDropdown renderizado:', { notificationCount, notificationsLength: notifications.length })
+
   const handleMarkAsRead = (id: string) => {
     onMarkAsRead(id)
   }

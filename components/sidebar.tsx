@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { SettingsModal } from "@/components/settings-modal"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -122,7 +123,7 @@ export function Sidebar({
                   className={cn(
                     "w-full justify-start",
                     isCollapsed ? "px-2" : "px-3",
-                    isActive && "bg-blue-600 text-white hover:bg-blue-700",
+                    isActive && "bg-green-600 text-white hover:bg-green-700",
                   )}
                   size="sm"
                 >
@@ -131,7 +132,7 @@ export function Sidebar({
                     <>
                       <span className="flex-1 text-left">{item.title}</span>
                       {item.title === "Leads" && leadsCount > 0 && (
-                        <Badge variant="secondary" className="ml-auto">
+                        <Badge variant="secondary" className="ml-auto bg-white text-gray-900 border-gray-300 hover:bg-gray-50">
                           {leadsCount}
                         </Badge>
                       )}
@@ -176,10 +177,12 @@ export function Sidebar({
               <HelpCircle className="h-4 w-4 mr-2" />
               Ajuda
             </Button>
-            <Button variant="ghost" size="sm" className="w-full justify-start text-gray-700">
-              <Settings className="h-4 w-4 mr-2" />
-              Configurações
-            </Button>
+            <SettingsModal>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-gray-700">
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações
+              </Button>
+            </SettingsModal>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -196,9 +199,11 @@ export function Sidebar({
             <Button variant="ghost" size="sm" className="w-full p-2">
               <HelpCircle className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="w-full p-2">
-              <Settings className="h-4 w-4" />
-            </Button>
+            <SettingsModal>
+              <Button variant="ghost" size="sm" className="w-full p-2">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SettingsModal>
             <Button 
               variant="ghost" 
               size="sm" 

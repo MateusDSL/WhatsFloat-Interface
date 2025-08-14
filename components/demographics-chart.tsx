@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import { TrendingUp, Users, MapPin } from "lucide-react"
+import { TrendingUp, Users, MapPin, PieChart as PieChartIcon } from "lucide-react"
 
 interface Lead {
   id: number
@@ -223,11 +223,17 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
       const data = payload[0]
       const percentage = ((data.value / totalLeads) * 100).toFixed(1)
       return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-blue-600">
-            <span className="font-medium">{data.value}</span> leads ({percentage}%)
-          </p>
+        <div className="bg-white/95 backdrop-blur-sm p-4 border border-gray-200 rounded-xl shadow-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.fill }}></div>
+            <p className="font-semibold text-gray-900">{data.name}</p>
+          </div>
+                     <div className="flex items-center gap-2">
+             <Users className="w-4 h-4 text-green-600" />
+             <p className="text-lg font-bold text-green-600">
+               {data.value} leads ({percentage}%)
+             </p>
+           </div>
         </div>
       )
     }
@@ -240,7 +246,7 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
 
   const getChartDescription = () => {
     const type = chartType === 'estado' ? 'estado brasileiro' : 'gênero'
-    return `Leads distribuídos por ${type} • Total: ${totalLeads} leads`
+    return `Leads distribuídos por ${type}`
   }
 
   const getTopItemText = () => {
@@ -249,17 +255,20 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 h-full flex flex-col">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>{getChartTitle()}</CardTitle>
-            <CardDescription>
+                         <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+               <PieChartIcon className="w-5 h-5 text-green-600" />
+               {getChartTitle()}
+             </CardTitle>
+            <CardDescription className="text-gray-600 mt-1">
               {getChartDescription()}
             </CardDescription>
           </div>
           <Select value={chartType} onValueChange={(value: 'estado' | 'genero') => setChartType(value)}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -279,7 +288,7 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0 flex-1">
         <div className="h-[360px] w-full relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -289,11 +298,17 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
                 cy="50%"
                 innerRadius={80}
                 outerRadius={120}
-                paddingAngle={3}
+                paddingAngle={4}
                 dataKey="value"
+                animationDuration={1500}
+                animationBegin={0}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.fill}
+                    className="hover:opacity-80 transition-opacity duration-200"
+                  />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
@@ -303,27 +318,29 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
           {/* Centro do gráfico */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className="text-center">
-              <div className="text-5xl font-bold text-gray-900">{totalLeads}</div>
-              <div className="text-sm text-gray-600">Leads</div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{totalLeads}</div>
+              <div className="text-sm text-gray-600 font-medium">Total de leads</div>
             </div>
           </div>
         </div>
 
         {chartData.length === 0 && (
-          <div className="flex items-center justify-center h-[360px] text-muted-foreground">
-            <p>Nenhum dado disponível para o período selecionado</p>
+          <div className="flex flex-col items-center justify-center h-[360px] text-muted-foreground">
+            <PieChartIcon className="w-12 h-12 text-gray-300 mb-4" />
+            <p className="text-lg font-medium">Nenhum dado disponível</p>
+            <p className="text-sm">Selecione um período diferente para visualizar os dados</p>
           </div>
         )}
         
         {/* Footer com item líder */}
         {topItem && chartData.length > 0 && (
-          <div className="border-t pt-4 mt-4">
-            <div className="flex items-center justify-center gap-2 text-sm bg-blue-50 px-4 py-2 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-              <span className="font-medium text-blue-900">
-                {getTopItemText()}
-              </span>
-            </div>
+          <div className="border-t border-gray-100 pt-4 mt-4">
+                       <div className="flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 rounded-xl border border-green-100">
+             <TrendingUp className="h-4 w-4 text-green-600" />
+             <span className="font-semibold text-green-900">
+               {getTopItemText()}
+             </span>
+           </div>
           </div>
         )}
       </CardContent>

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, Lead } from '@/lib/supabase'
+import { useSettings } from '@/hooks/useSettings'
 
 export function useLeads() {
+  const { settings } = useSettings()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -173,10 +175,16 @@ export function useLeads() {
     if (pollingInterval.current) {
       clearInterval(pollingInterval.current)
     }
-    pollingInterval.current = setInterval(() => {
-      console.log('🔄 Executando polling...')
-      fetchNewLeads()
-    }, 5000) // A cada 5 segundos para reduzir carga
+    
+    // Usar intervalo fixo para polling (5 segundos)
+    const interval = 5000
+    
+    if (interval > 0) {
+      pollingInterval.current = setInterval(() => {
+        console.log('🔄 Executando polling...')
+        fetchNewLeads()
+      }, interval)
+    }
   }
 
   useEffect(() => {
@@ -194,6 +202,12 @@ export function useLeads() {
         clearInterval(pollingInterval.current)
       }
     }
+  }, [])
+
+  // Polling sempre ativo com intervalo fixo de 5 segundos
+  useEffect(() => {
+    console.log('🔄 Polling sempre ativo com intervalo de 5 segundos')
+    startPolling()
   }, [])
 
   return {

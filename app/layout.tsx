@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: 'Leads Database - WhatsFloat',
@@ -27,8 +28,10 @@ html {
         `}</style>
       </head>
       <body>
-        {children}
-        <Toaster />
+        <ThemeProvider defaultTheme="system" storageKey="app-theme">
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

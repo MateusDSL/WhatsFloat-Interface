@@ -1,21 +1,27 @@
 import { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { Lead } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
+import { useSettings } from '@/hooks/useSettings'
+import { useDesktopNotifications } from '@/hooks/useDesktopNotifications'
+import { useAudio } from '@/hooks/useAudio'
 
-// Função para tocar som de notificação
-const playNotificationSound = () => {
-  try {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
-    audio.volume = 0.3
-    audio.play().catch(() => {
-      // Ignora erros de autoplay
-    })
-  } catch (error) {
-    // Ignora erros de áudio
-  }
+// Hook para gerenciar áudio de notificação
+const useNotificationAudio = () => {
+  const { play: playNotificationSound, loadAudio } = useAudio('/notification-sound.mp3')
+  
+  // Carregar o áudio quando o hook for inicializado
+  React.useEffect(() => {
+    loadAudio()
+  }, [loadAudio])
+  
+  return { playNotificationSound }
 }
 
 export function useNotifications(leads: Lead[]) {
+  const { settings } = useSettings()
+  const { showNotification } = useDesktopNotifications()
+  const { playNotificationSound } = useNotificationAudio()
   const [notificationCount, setNotificationCount] = useState(0)
   const [notifications, setNotifications] = useState<Array<{
     id: string
@@ -80,15 +86,28 @@ export function useNotifications(leads: Lead[]) {
           return newCount
         })
         
-        // Mostrar toast de notificação
-        toast({
-          title: "Novo Lead!",
-          description: `Lead "${lead.name}" foi adicionado ao sistema.`,
-          duration: 5000,
-        })
-        
-        // Tocar som de notificação
-        playNotificationSound()
+                 // Mostrar toast de notificação apenas se habilitado
+         if (settings.notifications.enabled) {
+           toast({
+             title: "Novo Lead!",
+             description: `Lead "${lead.name}" foi adicionado ao sistema.`,
+             duration: 5000,
+           })
+           
+           // Mostrar notificação desktop se habilitada
+           if (settings.notifications.desktop) {
+             showNotification("Novo Lead!", {
+               body: `Lead "${lead.name}" foi adicionado ao sistema.`,
+               tag: `lead-${lead.id}`,
+               requireInteraction: false
+             })
+           }
+           
+           // Tocar som de notificação apenas se habilitado
+           if (settings.notifications.sound) {
+             playNotificationSound()
+           }
+         }
       })
     }
   }, [leads])

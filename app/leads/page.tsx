@@ -154,7 +154,13 @@ const TableRowSkeleton = () => (
       <Skeleton className="h-4 w-20" />
     </TableCell>
     <TableCell>
-      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-4 w-16" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-20" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-16" />
     </TableCell>
     <TableCell>
       <Skeleton className="h-6 w-12" />
@@ -169,6 +175,8 @@ const mapLeadToDisplay = (lead: Lead) => ({
   email: lead.phone, // Usando phone como email temporariamente
   phone: lead.phone,
   campaign: lead.utm_campaign,
+  utm_term: lead.utm_term,
+  utm_medium: lead.utm_medium,
   beacon: lead.beacon,
   source: lead.origem || 'nao-identificado', // Fallback para 'nao-identificado' se origem estiver vazia
   createdAt: lead.created_at,
@@ -226,6 +234,8 @@ export default function LeadsPage() {
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.campaign && lead.campaign.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lead.utm_term && lead.utm_term.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lead.utm_medium && lead.utm_medium.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (lead.source && lead.source.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesSource = sourceFilter === "todos" || 
                          (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
@@ -365,6 +375,7 @@ export default function LeadsPage() {
         toast({
           title: "Beacon atualizado",
           description: `Beacon ${!lead.beacon ? "ativado" : "desativado"} para ${lead.name}.`,
+          variant: "success",
         })
       }
     } catch (error) {
@@ -403,10 +414,11 @@ export default function LeadsPage() {
       const leadsToDelete = selectedLeads.length
       await deleteMultipleLeads(selectedLeads)
       setSelectedLeads([])
-      toast({
-        title: "Leads excluídos",
-        description: `${leadsToDelete} leads foram excluídos com sucesso.`,
-      })
+              toast({
+          title: "Leads excluídos",
+          description: `${leadsToDelete} leads foram excluídos com sucesso.`,
+          variant: "success",
+        })
     } catch (error) {
       toast({
         title: "Erro",
@@ -421,10 +433,11 @@ export default function LeadsPage() {
       const leadsToUpdate = selectedLeads.length
       await Promise.all(selectedLeads.map(id => updateLead(id, { beacon: beaconValue })))
       setSelectedLeads([])
-      toast({
-        title: "Beacon atualizado",
-        description: `Beacon de ${leadsToUpdate} leads foi ${beaconValue ? "ativado" : "desativado"}.`,
-      })
+              toast({
+          title: "Beacon atualizado",
+          description: `Beacon de ${leadsToUpdate} leads foi ${beaconValue ? "ativado" : "desativado"}.`,
+          variant: "success",
+        })
     } catch (error) {
       toast({
         title: "Erro",
@@ -437,10 +450,11 @@ export default function LeadsPage() {
   const handleBulkExport = () => {
     const selectedLeadsData = mappedLeads.filter((lead) => selectedLeads.includes(lead.id!))
     console.log("Exportando leads:", selectedLeadsData)
-    toast({
-      title: "Exportação iniciada",
-      description: `Exportando ${selectedLeads.length} leads selecionados.`,
-    })
+          toast({
+        title: "Exportação iniciada",
+        description: `Exportando ${selectedLeads.length} leads selecionados.`,
+        variant: "info",
+      })
   }
 
   // Mostrar loading
@@ -495,53 +509,61 @@ export default function LeadsPage() {
               </>
             ) : (
                              <>
-                 <Card>
-                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                     <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
-                     <Users className="h-4 w-4 text-muted-foreground" />
+                 <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                     <CardTitle className="text-sm font-semibold text-gray-900">Total de Leads</CardTitle>
+                     <div className="p-2 bg-gray-100 rounded-lg">
+                       <Users className="h-4 w-4 text-green-600" />
+                     </div>
                    </CardHeader>
-                                       <CardContent>
-                      <div className="text-2xl font-bold">{totalLeads}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatComparisonMessage(previousPeriodStats.totalPercentageChange, previousPeriodStats.hasComparison)}
-                      </p>
-                    </CardContent>
+                   <CardContent>
+                     <div className="text-3xl font-bold text-gray-900 mb-2">{totalLeads}</div>
+                     <p className="text-xs text-gray-600 font-medium">
+                       {formatComparisonMessage(previousPeriodStats.totalPercentageChange, previousPeriodStats.hasComparison)}
+                     </p>
+                   </CardContent>
                  </Card>
-                 <Card>
-                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                     <CardTitle className="text-sm font-medium">Beacon</CardTitle>
-                     <Tag className="h-4 w-4 text-muted-foreground" />
+                 <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                     <CardTitle className="text-sm font-semibold text-gray-900">Beacon</CardTitle>
+                     <div className="p-2 bg-gray-100 rounded-lg">
+                       <Tag className="h-4 w-4 text-green-600" />
+                     </div>
                    </CardHeader>
-                                       <CardContent>
-                      <div className="text-2xl font-bold">{beaconLeads}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatComparisonMessage(previousPeriodStats.beaconPercentageChange, previousPeriodStats.hasComparison)}
-                      </p>
-                    </CardContent>
+                   <CardContent>
+                     <div className="text-3xl font-bold text-gray-900 mb-2">{beaconLeads}</div>
+                     <p className="text-xs text-gray-600 font-medium">
+                       {formatComparisonMessage(previousPeriodStats.beaconPercentageChange, previousPeriodStats.hasComparison)}
+                     </p>
+                   </CardContent>
                  </Card>
-                 <Card>
-                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                     <CardTitle className="text-sm font-medium">Rastreadas</CardTitle>
-                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                 <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                     <CardTitle className="text-sm font-semibold text-gray-900">Rastreadas</CardTitle>
+                     <div className="p-2 bg-gray-100 rounded-lg">
+                       <TrendingUp className="h-4 w-4 text-green-600" />
+                     </div>
                    </CardHeader>
-                                       <CardContent>
-                      <div className="text-2xl font-bold">{trackedLeads}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatComparisonMessage(previousPeriodStats.trackedPercentageChange, previousPeriodStats.hasComparison)}
-                      </p>
-                    </CardContent>
+                   <CardContent>
+                     <div className="text-3xl font-bold text-gray-900 mb-2">{trackedLeads}</div>
+                     <p className="text-xs text-gray-600 font-medium">
+                       {formatComparisonMessage(previousPeriodStats.trackedPercentageChange, previousPeriodStats.hasComparison)}
+                     </p>
+                   </CardContent>
                  </Card>
-                 <Card>
-                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                     <CardTitle className="text-sm font-medium">Não Rastreadas</CardTitle>
-                     <Users className="h-4 w-4 text-muted-foreground" />
+                 <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                     <CardTitle className="text-sm font-semibold text-gray-900">Não Rastreadas</CardTitle>
+                     <div className="p-2 bg-gray-100 rounded-lg">
+                       <Users className="h-4 w-4 text-green-600" />
+                     </div>
                    </CardHeader>
-                                       <CardContent>
-                      <div className="text-2xl font-bold">{untrackedLeads}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatComparisonMessage(previousPeriodStats.untrackedPercentageChange, previousPeriodStats.hasComparison)}
-                      </p>
-                    </CardContent>
+                   <CardContent>
+                     <div className="text-3xl font-bold text-gray-900 mb-2">{untrackedLeads}</div>
+                     <p className="text-xs text-gray-600 font-medium">
+                       {formatComparisonMessage(previousPeriodStats.untrackedPercentageChange, previousPeriodStats.hasComparison)}
+                     </p>
+                   </CardContent>
                  </Card>
                </>
             )}
@@ -549,17 +571,17 @@ export default function LeadsPage() {
 
                        {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-              <div className="lg:col-span-7">
+              <div className="lg:col-span-7 h-full">
                 <LeadsChart leads={filteredLeadsForStats} dateFilter={dateFilter} />
               </div>
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-3 h-full">
                 <DemographicsChart leads={filteredLeadsForStats} dateFilter={dateFilter} />
               </div>
             </div>
 
            {/* Filters and Search */}
-          <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0">
+          <Card className="flex-1 flex flex-col min-h-0 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
+            <CardHeader className="flex-shrink-0 pb-4">
               {loading ? (
                 <>
                   <Skeleton className="h-6 w-24 mb-2" />
@@ -567,8 +589,21 @@ export default function LeadsPage() {
                 </>
               ) : (
                 <>
-                  <CardTitle>Leads</CardTitle>
-                  <CardDescription>Gerencie todos os seus leads em um só lugar</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                                         <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                     <Users className="w-5 h-5 text-green-600" />
+                     Leads
+                   </CardTitle>
+                      <CardDescription className="text-gray-600 mt-1">
+                        Gerencie todos os seus leads em um só lugar
+                      </CardDescription>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-600">{filteredLeads.length}</div>
+                      <div className="text-sm text-gray-500">Leads filtrados</div>
+                    </div>
+                  </div>
                 </>
               )}
             </CardHeader>
@@ -584,69 +619,75 @@ export default function LeadsPage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Buscar por nome, email ou empresa..."
+                      placeholder="Buscar por nome, telefone, campanha ou origem..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                                             className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200"
                     />
                   </div>
-                                     <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                     <SelectTrigger className="w-full sm:w-[180px]">
-                       <SelectValue placeholder="Origem" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       {getSourceFilterOptions().map((option) => (
-                         <SelectItem key={option.value} value={option.value}>
-                           {option.label}
-                         </SelectItem>
-                       ))}
-                     </SelectContent>
-                   </Select>
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                                         <SelectTrigger className="w-full sm:w-[180px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
+                      <SelectValue placeholder="Origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getSourceFilterOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <AdvancedDatePicker value={dateFilter} onChange={setDateFilter} />
                 </div>
               )}
 
-              {/* Bulk Actions Bar */}
-              {selectedLeads.length > 0 && (
-                <div className="flex items-center justify-between p-4 mb-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-blue-900">
-                      {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""} selecionado
-                      {selectedLeads.length > 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Tag className="w-4 h-4 mr-2" />
-                          Beacon
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleBulkBeaconToggle(true)}>Ativar Beacon</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBulkBeaconToggle(false)}>
-                          Desativar Beacon
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                             {/* Bulk Actions Bar */}
+               {selectedLeads.length > 0 && (
+                 <div className="flex items-center justify-between p-4 mb-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm">
+                   <div className="flex items-center gap-3">
+                     <div className="p-2 bg-green-100 rounded-lg">
+                       <Users className="w-4 h-4 text-green-600" />
+                     </div>
+                     <div>
+                       <span className="text-sm font-semibold text-green-900">
+                         {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""} selecionado
+                         {selectedLeads.length > 1 ? "s" : ""}
+                       </span>
+                       <p className="text-xs text-green-600">Ações em massa disponíveis</p>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <DropdownMenu>
+                       <DropdownMenuTrigger asChild>
+                         <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200">
+                           <Tag className="w-4 h-4 mr-2" />
+                           Beacon
+                         </Button>
+                       </DropdownMenuTrigger>
+                       <DropdownMenuContent>
+                         <DropdownMenuItem onClick={() => handleBulkBeaconToggle(true)}>Ativar Beacon</DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleBulkBeaconToggle(false)}>
+                           Desativar Beacon
+                         </DropdownMenuItem>
+                       </DropdownMenuContent>
+                     </DropdownMenu>
 
-                    <Button variant="outline" size="sm" onClick={handleBulkExport}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Exportar
-                    </Button>
+                     <Button variant="outline" size="sm" onClick={handleBulkExport} className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200">
+                       <Download className="w-4 h-4 mr-2" />
+                       Exportar
+                     </Button>
 
-                    <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Excluir
-                    </Button>
+                     <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="hover:bg-red-600 transition-colors duration-200">
+                       <Trash2 className="w-4 h-4 mr-2" />
+                       Excluir
+                     </Button>
 
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedLeads([])}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              )}
+                     <Button variant="ghost" size="sm" onClick={() => setSelectedLeads([])} className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200">
+                       Cancelar
+                     </Button>
+                   </div>
+                 </div>
+               )}
 
               {/* Leads Table */}
               <div className="rounded-md border flex-1 flex flex-col min-h-0">
@@ -665,8 +706,10 @@ export default function LeadsPage() {
                         <TableHead className="w-24">Data</TableHead>
                         <TableHead className="w-48">Nome</TableHead>
                         <TableHead className="w-40">Telefone / Estado</TableHead>
-                        <TableHead className="w-32">Origem</TableHead>
-                        <TableHead className="w-40">Campanha</TableHead>
+                                                                          <TableHead className="w-24">Origem</TableHead>
+                         <TableHead className="w-28">Medium</TableHead>
+                         <TableHead className="w-32">Campanha</TableHead>
+                         <TableHead className="w-28">Termo</TableHead>
                         <TableHead className="w-20">Beacon</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -702,11 +745,21 @@ export default function LeadsPage() {
                             <div className="text-xs text-gray-500">{getStateFromPhone(lead.phone)}</div>
                           </div>
                         </TableCell>
-                                                         <TableCell className="w-32">
-                               {sourceLabels[lead.source as keyof typeof sourceLabels] || 
-                                (lead.source && lead.source !== 'nao-identificado' ? lead.source : 'Não Rastreada')}
-                             </TableCell>
-                                                         <TableCell className="w-40">{lead.campaign || 'Não Rastreada'}</TableCell>
+                                                                                                           <TableCell className="w-24">
+                           <div className="text-sm">
+                             {sourceLabels[lead.source as keyof typeof sourceLabels] || 
+                              (lead.source && lead.source !== 'nao-identificado' ? lead.source : 'Não Rastreada')}
+                           </div>
+                         </TableCell>
+                         <TableCell className="w-28">
+                           <div className="text-sm text-gray-600">{lead.utm_medium || 'N/A'}</div>
+                         </TableCell>
+                         <TableCell className="w-32">
+                           <div className="text-sm">{lead.campaign || 'Não Rastreada'}</div>
+                         </TableCell>
+                         <TableCell className="w-28">
+                           <div className="text-sm text-gray-600">{lead.utm_term || 'N/A'}</div>
+                         </TableCell>
                             <TableCell className="w-20">
                               <Badge
                                 className={`cursor-pointer ${lead.beacon ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"}`}
@@ -723,11 +776,17 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {currentLeads.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Nenhum lead encontrado com os filtros aplicados.</p>
-                </div>
-              )}
+                             {currentLeads.length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-12 text-center">
+                   <div className="p-4 bg-gray-100 rounded-full mb-4">
+                     <Users className="w-8 h-8 text-gray-400" />
+                   </div>
+                   <h3 className="text-lg font-semibold text-gray-700 mb-2">Nenhum lead encontrado</h3>
+                   <p className="text-gray-500 max-w-md">
+                     Não encontramos leads que correspondam aos filtros aplicados. Tente ajustar os critérios de busca.
+                   </p>
+                 </div>
+               )}
 
               {/* Pagination Controls */}
               {loading ? (
@@ -744,57 +803,63 @@ export default function LeadsPage() {
                   </div>
                 </div>
               ) : (
-                filteredLeads.length > 0 && (
-                  <div className="flex items-center justify-between px-2 py-4 flex-shrink-0">
-                    <div className="text-sm text-gray-700">
-                      Mostrando {startIndex + 1} a {Math.min(endIndex, filteredLeads.length)} de {filteredLeads.length} leads
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        Anterior
-                      </Button>
-                      <div className="flex items-center space-x-1">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNumber
-                          if (totalPages <= 5) {
-                            pageNumber = i + 1
-                          } else if (currentPage <= 3) {
-                            pageNumber = i + 1
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNumber = totalPages - 4 + i
-                          } else {
-                            pageNumber = currentPage - 2 + i
-                          }
-                          
-                          return (
-                            <Button
-                              key={pageNumber}
-                              variant={currentPage === pageNumber ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(pageNumber)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {pageNumber}
-                            </Button>
-                          )
-                        })}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                      >
-                        Próxima
-                      </Button>
-                    </div>
-                  </div>
-                )
+                                 filteredLeads.length > 0 && (
+                   <div className="flex items-center justify-between px-4 py-4 flex-shrink-0 bg-gray-50/50 rounded-lg border border-gray-100">
+                     <div className="text-sm text-gray-600 font-medium">
+                       Mostrando <span className="text-green-600 font-semibold">{startIndex + 1}</span> a <span className="text-green-600 font-semibold">{Math.min(endIndex, filteredLeads.length)}</span> de <span className="text-green-600 font-semibold">{filteredLeads.length}</span> leads
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => setCurrentPage(currentPage - 1)}
+                         disabled={currentPage === 1}
+                         className="border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200 disabled:opacity-50"
+                       >
+                         Anterior
+                       </Button>
+                       <div className="flex items-center space-x-1">
+                         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                           let pageNumber
+                           if (totalPages <= 5) {
+                             pageNumber = i + 1
+                           } else if (currentPage <= 3) {
+                             pageNumber = i + 1
+                           } else if (currentPage >= totalPages - 2) {
+                             pageNumber = totalPages - 4 + i
+                           } else {
+                             pageNumber = currentPage - 2 + i
+                           }
+                           
+                           return (
+                             <Button
+                               key={pageNumber}
+                               variant={currentPage === pageNumber ? "default" : "outline"}
+                               size="sm"
+                               onClick={() => setCurrentPage(pageNumber)}
+                               className={`w-8 h-8 p-0 transition-all duration-200 ${
+                                 currentPage === pageNumber 
+                                   ? "bg-green-600 text-white hover:bg-green-700" 
+                                   : "border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                               }`}
+                             >
+                               {pageNumber}
+                             </Button>
+                           )
+                         })}
+                       </div>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => setCurrentPage(currentPage + 1)}
+                         disabled={currentPage === totalPages}
+                         className="border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200 disabled:opacity-50"
+                       >
+                         Próxima
+                       </Button>
+                     </div>
+                   </div>
+                 )
               )}
             </CardContent>
           </Card>

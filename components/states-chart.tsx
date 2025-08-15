@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, Users, MapPin } from "lucide-react"
 
@@ -25,6 +26,7 @@ interface DemographicsChartProps {
     from: Date | undefined
     to: Date | undefined
   }
+  loading?: boolean
 }
 
 // Mapeamento de DDD para estados
@@ -145,7 +147,7 @@ const GENDER_COLORS = [
   '#94a3b8', // Cinza - Não Identificado
 ]
 
-export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps) {
+export function DemographicsChart({ leads, dateFilter, loading = false }: DemographicsChartProps) {
   const [chartType, setChartType] = useState<'estado' | 'genero'>('estado')
 
   const chartData = useMemo(() => {
@@ -248,75 +250,98 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
     return `${topItem?.name} lidera com ${topItemPercentage}% dos leads`
   }
 
+  // Componente de skeleton para o gráfico de pizza
+  const PieChartSkeleton = () => (
+    <div className="h-[360px] w-full relative">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Skeleton className="w-48 h-48 rounded-full" />
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <Skeleton className="w-16 h-8 mb-2" />
+        <Skeleton className="w-24 h-4" />
+      </div>
+    </div>
+  )
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>{getChartTitle()}</CardTitle>
+            <CardTitle>
+              {loading ? <Skeleton className="w-32 h-6" /> : getChartTitle()}
+            </CardTitle>
             <CardDescription>
-              {getChartDescription()}
+              {loading ? <Skeleton className="w-48 h-4" /> : getChartDescription()}
             </CardDescription>
           </div>
-          <Select value={chartType} onValueChange={(value: 'estado' | 'genero') => setChartType(value)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="estado">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Estado
-                </div>
-              </SelectItem>
-              <SelectItem value="genero">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Gênero
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          {loading ? (
+            <Skeleton className="w-[140px] h-10" />
+          ) : (
+            <Select value={chartType} onValueChange={(value: 'estado' | 'genero') => setChartType(value)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="estado">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Estado
+                  </div>
+                </SelectItem>
+                <SelectItem value="genero">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Gênero
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[360px] w-full relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius={80}
-                outerRadius={120}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          {/* Centro do gráfico */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div className="text-center">
-              <div className="text-5xl font-bold text-gray-900">{totalLeads}</div>
-              <div className="text-sm text-gray-600">Leads</div>
+        {loading ? (
+          <PieChartSkeleton />
+        ) : (
+          <div className="h-[360px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            
+            {/* Centro do gráfico */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-gray-900">{totalLeads}</div>
+                <div className="text-sm text-gray-600">Leads</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {chartData.length === 0 && (
+        {!loading && chartData.length === 0 && (
           <div className="flex items-center justify-center h-[360px] text-muted-foreground">
             <p>Nenhum dado disponível para o período selecionado</p>
           </div>
         )}
         
         {/* Footer com item líder */}
-        {topItem && chartData.length > 0 && (
+        {!loading && topItem && chartData.length > 0 && (
           <div className="border-t pt-4 mt-4">
             <div className="flex items-center justify-center gap-2 text-sm bg-blue-50 px-4 py-2 rounded-lg">
               <TrendingUp className="h-4 w-4 text-blue-600" />

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, Users, MapPin, PieChart as PieChartIcon } from "lucide-react"
 
@@ -25,6 +26,7 @@ interface DemographicsChartProps {
     from: Date | undefined
     to: Date | undefined
   }
+  loading?: boolean
 }
 
 // Mapeamento de DDD para estados
@@ -145,7 +147,7 @@ const GENDER_COLORS = [
   '#94a3b8', // Cinza - Não Identificado
 ]
 
-export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps) {
+export function DemographicsChart({ leads, dateFilter, loading = false }: DemographicsChartProps) {
   const [chartType, setChartType] = useState<'estado' | 'genero'>('estado')
 
   const chartData = useMemo(() => {
@@ -254,77 +256,98 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
     return `${topItem?.name} lidera com ${topItemPercentage}% dos leads`
   }
 
+  // Componente de skeleton para o gráfico de pizza
+  const PieChartSkeleton = () => (
+    <div className="h-[360px] w-full relative">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Skeleton className="w-48 h-48 rounded-full" />
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <Skeleton className="w-16 h-8 mb-2" />
+        <Skeleton className="w-24 h-4" />
+      </div>
+    </div>
+  )
+
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 h-full flex flex-col">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-                         <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-               <PieChartIcon className="w-5 h-5 text-green-600" />
-               {getChartTitle()}
-             </CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-green-600" />
+              {loading ? <Skeleton className="w-32 h-6" /> : getChartTitle()}
+            </CardTitle>
             <CardDescription className="text-gray-600 mt-1">
-              {getChartDescription()}
+              {loading ? <Skeleton className="w-48 h-4" /> : getChartDescription()}
             </CardDescription>
           </div>
-          <Select value={chartType} onValueChange={(value: 'estado' | 'genero') => setChartType(value)}>
-            <SelectTrigger className="w-[140px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="estado">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Estado
-                </div>
-              </SelectItem>
-              <SelectItem value="genero">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Gênero
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          {loading ? (
+            <Skeleton className="w-[140px] h-10" />
+          ) : (
+            <Select value={chartType} onValueChange={(value: 'estado' | 'genero') => setChartType(value)}>
+              <SelectTrigger className="w-[140px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="estado">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Estado
+                  </div>
+                </SelectItem>
+                <SelectItem value="genero">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Gênero
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-0 flex-1">
-        <div className="h-[360px] w-full relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius={80}
-                outerRadius={120}
-                paddingAngle={4}
-                dataKey="value"
-                animationDuration={1500}
-                animationBegin={0}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.fill}
-                    className="hover:opacity-80 transition-opacity duration-200"
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          {/* Centro do gráfico */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gray-900 mb-1">{totalLeads}</div>
-              <div className="text-sm text-gray-600 font-medium">Total de leads</div>
+        {loading ? (
+          <PieChartSkeleton />
+        ) : (
+          <div className="h-[360px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  paddingAngle={4}
+                  dataKey="value"
+                  animationDuration={1500}
+                  animationBegin={0}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill}
+                      className="hover:opacity-80 transition-opacity duration-200"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            
+            {/* Centro do gráfico */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-900 mb-1">{totalLeads}</div>
+                <div className="text-sm text-gray-600 font-medium">Total de leads</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {chartData.length === 0 && (
+        {!loading && chartData.length === 0 && (
           <div className="flex flex-col items-center justify-center h-[360px] text-muted-foreground">
             <PieChartIcon className="w-12 h-12 text-gray-300 mb-4" />
             <p className="text-lg font-medium">Nenhum dado disponível</p>
@@ -333,14 +356,14 @@ export function DemographicsChart({ leads, dateFilter }: DemographicsChartProps)
         )}
         
         {/* Footer com item líder */}
-        {topItem && chartData.length > 0 && (
+        {!loading && topItem && chartData.length > 0 && (
           <div className="border-t border-gray-100 pt-4 mt-4">
-                       <div className="flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 rounded-xl border border-green-100">
-             <TrendingUp className="h-4 w-4 text-green-600" />
-             <span className="font-semibold text-green-900">
-               {getTopItemText()}
-             </span>
-           </div>
+            <div className="flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 rounded-xl border border-green-100">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <span className="font-semibold text-green-900">
+                {getTopItemText()}
+              </span>
+            </div>
           </div>
         )}
       </CardContent>

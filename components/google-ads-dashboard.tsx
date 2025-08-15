@@ -7,7 +7,8 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { TrendingUp, Eye, MousePointer, DollarSign, Search, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
+import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { GoogleAdsDateFilter } from './google-ads-date-filter';
 
 interface GoogleAdsDashboardProps {
@@ -179,83 +180,120 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
     console.log('🎯 Filtro de data ativo:', dateFilter.from && dateFilter.to ? 'SIM' : 'NÃO');
   }
 
-  // Função para limpar filtro de data (volta ao padrão de 7 dias)
-  const clearDateFilter = () => {
-    setDateFilter(getDefaultDateFilter());
-  };
+
 
   // Função para limpar ordenação
   const clearSort = () => {
     setSortConfig(null);
   };
 
+  // Componentes de skeleton
+  const StatCardSkeleton = () => (
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-8 w-16 mb-2" />
+        <Skeleton className="h-3 w-20" />
+      </CardContent>
+    </Card>
+  );
+
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+    </TableRow>
+  );
+
     return (
     <div className="flex-1 p-4 space-y-4 overflow-auto">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-900">Total de Campanhas</CardTitle>
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 mb-2">{campaigns.length}</div>
-            <p className="text-xs text-gray-600 font-medium">Campanhas ativas</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-900">Total de Impressões</CardTitle>
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <Eye className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 mb-2">
-              {formatGoogleAdsData.formatImpressions(
-                campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0)
-              )}
-            </div>
-            <p className="text-xs text-gray-600 font-medium">Visualizações</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-900">Total de Cliques</CardTitle>
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <MousePointer className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 mb-2">
-              {formatGoogleAdsData.formatImpressions(
-                campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-              )}
-            </div>
-            <p className="text-xs text-gray-600 font-medium">Interações</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-900">Custo Total</CardTitle>
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 mb-2">
-              {formatGoogleAdsData.formatCost(
-                campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0)
-              )}
-            </div>
-            <p className="text-xs text-gray-600 font-medium">Investimento</p>
-          </CardContent>
-        </Card>
+        {campaignsLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Total de Campanhas</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">{campaigns.length}</div>
+                <p className="text-xs text-gray-600 font-medium">Campanhas ativas</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Total de Impressões</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Eye className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {formatGoogleAdsData.formatImpressions(
+                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0)
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Visualizações</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Total de Cliques</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <MousePointer className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {formatGoogleAdsData.formatImpressions(
+                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Interações</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Custo Total</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {formatGoogleAdsData.formatCost(
+                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0)
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Investimento</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Campanhas Table */}
@@ -267,28 +305,16 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                 <TrendingUp className="w-5 h-5 text-green-600" />
                 Campanhas
               </CardTitle>
-                             <CardDescription className="text-gray-600 mt-1">
-                 Gerencie todas as suas campanhas ativas do Google Ads
-                 <span className="ml-2 text-green-600 font-medium">
-                   • Últimos 7 dias
-                 </span>
-                 {sortConfig && (
-                   <span className="ml-2 text-purple-600 font-medium">
-                     • Ordenado por {sortConfig.key} ({sortConfig.direction === 'asc' ? 'crescente' : 'decrescente'})
-                   </span>
-                 )}
-                 {campaignsLoading && (
-                   <span className="ml-2 text-blue-600 font-medium flex items-center gap-1">
-                     <Loader2 className="w-3 h-3 animate-spin" />
-                     Carregando...
-                   </span>
-                 )}
-               </CardDescription>
+              <CardDescription className="text-gray-600 mt-1">
+                Gerencie todas as suas campanhas ativas do Google Ads
+                {sortConfig && (
+                  <span className="ml-2 text-purple-600 font-medium">
+                    • Ordenado por {sortConfig.key} ({sortConfig.direction === 'asc' ? 'crescente' : 'decrescente'})
+                  </span>
+                )}
+              </CardDescription>
             </div>
-                         <div className="text-right">
-               <div className="text-2xl font-bold text-green-600">{sortedCampaigns.length}</div>
-               <div className="text-sm text-gray-500">Campanhas filtradas</div>
-             </div>
+
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
@@ -303,31 +329,23 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                  className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200"
                />
              </div>
-                            <div className="flex gap-2">
-                 <GoogleAdsDateFilter 
-                   value={dateFilter} 
-                   onChange={setDateFilter}
-                   customerId={customerId}
-                 />
-                                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearDateFilter}
-                    className="px-3"
-                  >
-                    Últimos 7 Dias
-                  </Button>
-                 {sortConfig && (
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     onClick={clearSort}
-                     className="px-3"
-                   >
-                     Limpar Ordenação
-                   </Button>
-                 )}
-               </div>
+            <div className="flex gap-2">
+              <GoogleAdsDateFilter 
+                value={dateFilter} 
+                onChange={setDateFilter}
+                customerId={customerId}
+              />
+              {sortConfig && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSort}
+                  className="px-3"
+                >
+                  Limpar Ordenação
+                </Button>
+              )}
+            </div>
            </div>
 
           {/* Campanhas Table */}
@@ -419,8 +437,14 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      </TableHead>
                    </TableRow>
                  </TableHeader>
-                                 <TableBody>
-                   {sortedCampaigns.map((campaign: any, index: number) => (
+                                                 <TableBody>
+                  {campaignsLoading ? (
+                    // Skeletons para as linhas da tabela durante o carregamento
+                    Array.from({ length: 8 }).map((_, index) => (
+                      <TableRowSkeleton key={`skeleton-${index}`} />
+                    ))
+                  ) : (
+                    sortedCampaigns.map((campaign: any, index: number) => (
                                          <TableRow
                        key={`campaign-${campaign.campaign.id}-${index}`}
                        className={index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
@@ -451,12 +475,13 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                        </TableCell>
                        <TableCell className="text-center">
                          {formatGoogleAdsData.formatCost(campaign.campaign_budget?.amount_micros || 0)}
-                       </TableCell>
-                     </TableRow>
-                  ))}
+                                             </TableCell>
+                    </TableRow>
+                  ))
+                  )}
                   
                   {/* Linha de Totais */}
-                  {sortedCampaigns.length > 0 && (
+                  {!campaignsLoading && sortedCampaigns.length > 0 && (
                     <TableRow className="bg-gray-50/80 border-t-2 border-gray-200">
                       <TableCell className="font-semibold text-left text-gray-700">
                         <div className="text-sm">TOTAIS</div>
@@ -511,24 +536,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
             </div>
           </div>
 
-                     {sortedCampaigns.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-4 bg-gray-100 rounded-full mb-4">
-                <TrendingUp className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Nenhuma campanha encontrada</h3>
-                             <p className="text-gray-500 max-w-md">
-                 Não encontramos campanhas nos últimos 7 dias. Tente ajustar o filtro de data ou verificar se há dados disponíveis para este período.
-               </p>
-                             <Button
-                 variant="outline"
-                 onClick={clearDateFilter}
-                 className="mt-4"
-               >
-                 Últimos 7 Dias
-               </Button>
-            </div>
-          )}
+
         </CardContent>
       </Card>
     </div>

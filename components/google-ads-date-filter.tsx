@@ -136,33 +136,29 @@ export function GoogleAdsDateFilter({
     setIsFetching(true)
     
     try {
-      let dateFrom: string
-      let dateTo: string
-      
-      if (dateRange.to) {
-        // Se tem data final, usar o intervalo
-        dateFrom = dateRange.from.toISOString().split('T')[0]
-        dateTo = dateRange.to.toISOString().split('T')[0]
-      } else {
-        // Se só tem data inicial, usar apenas essa data (mesmo dia)
-        dateFrom = dateRange.from.toISOString().split('T')[0]
-        dateTo = dateFrom
-      }
+      // Cria um intervalo final garantindo que a data 'to' exista.
+      const finalDateRange = {
+        from: dateRange.from,
+        to: dateRange.to || dateRange.from, // Se 'to' for undefined, usa 'from'.
+      };
+
+      const dateFrom = finalDateRange.from.toISOString().split('T')[0]
+      const dateTo = finalDateRange.to.toISOString().split('T')[0]
       
       console.log('🔍 Aplicando filtro de data Google Ads:', { dateFrom, dateTo })
       
-      // Buscar dados com filtro de data
+      // Busca dados com o filtro de data correto
       await fetchCampaigns(customerId, dateFrom, dateTo)
       
-      // Aplicar o filtro
-      onChange(dateRange)
+      // Aplica o filtro no estado do componente pai com o intervalo corrigido
+      onChange(finalDateRange)
       setIsOpen(false)
       
       console.log('✅ Filtro de data aplicado com sucesso')
       
     } catch (err) {
       console.error('❌ Erro ao aplicar filtro de data:', err)
-      // Em caso de erro, manter o filtro anterior
+      // Em caso de erro, reverte para o valor anterior
       setTempRange(value)
     } finally {
       setIsFetching(false)

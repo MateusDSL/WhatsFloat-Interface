@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { format, eachDayOfInterval, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -26,9 +27,10 @@ interface LeadsChartProps {
     from: Date | undefined
     to: Date | undefined
   }
+  loading?: boolean
 }
 
-export function LeadsChart({ leads, dateFilter }: LeadsChartProps) {
+export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartProps) {
   const chartData = useMemo(() => {
     // Define date range - default to last 30 days if no filter
     const endDate = dateFilter.to || new Date()
@@ -78,6 +80,30 @@ export function LeadsChart({ leads, dateFilter }: LeadsChartProps) {
     return "#34d399" // Verde claro para valores baixos
   }
 
+  // Componente de skeleton para o gráfico
+  const ChartSkeleton = () => (
+    <div className="h-[360px] w-full flex flex-col">
+      {/* Skeleton para as barras do gráfico */}
+      <div className="flex-1 flex items-end justify-between gap-2 px-4 pb-8">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <div key={index} className="flex-1 flex flex-col items-center gap-2">
+            <Skeleton className="w-full" style={{ 
+              height: `${Math.random() * 60 + 20}%`,
+              minHeight: '20px'
+            }} />
+            <Skeleton className="w-8 h-3" />
+          </div>
+        ))}
+      </div>
+      {/* Skeleton para o eixo X */}
+      <div className="flex justify-between px-4 pb-2">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <Skeleton key={index} className="w-6 h-3" />
+        ))}
+      </div>
+    </div>
+  )
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
@@ -114,85 +140,106 @@ export function LeadsChart({ leads, dateFilter }: LeadsChartProps) {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-                         <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-               <TrendingUp className="w-5 h-5 text-green-600" />
-               Leads por Dia
-             </CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+              Leads por Dia
+            </CardTitle>
             <CardDescription className="text-gray-600 mt-1">
               Distribuição diária de leads no período selecionado
             </CardDescription>
           </div>
-                     <div className="text-right">
-             <div className="text-2xl font-bold text-green-600">{totalLeads}</div>
-             <div className="text-sm text-gray-500">Total de leads</div>
-           </div>
+          <div className="text-right">
+            {loading ? (
+              <div>
+                <Skeleton className="w-16 h-8 mb-1" />
+                <Skeleton className="w-20 h-4" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">{totalLeads}</div>
+                <div className="text-sm text-gray-500">Total de leads</div>
+              </>
+            )}
+          </div>
         </div>
-                 <div className="flex items-center gap-4 mt-4 p-3 bg-green-50/50 rounded-lg border border-green-100">
-           <div className="flex items-center gap-2">
-             <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-             <span className="text-sm font-medium text-gray-700">Média diária:</span>
-             <span className="text-sm font-bold text-green-600">{averageLeads} leads</span>
-           </div>
-           <div className="flex items-center gap-2">
-             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-             <span className="text-sm font-medium text-gray-700">Pico:</span>
-             <span className="text-sm font-bold text-green-600">{maxLeads} leads</span>
-           </div>
-         </div>
+        <div className="flex items-center gap-4 mt-4 p-3 bg-green-50/50 rounded-lg border border-green-100">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-700">Média diária:</span>
+            {loading ? (
+              <Skeleton className="w-12 h-4" />
+            ) : (
+              <span className="text-sm font-bold text-green-600">{averageLeads} leads</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-700">Pico:</span>
+            {loading ? (
+              <Skeleton className="w-12 h-4" />
+            ) : (
+              <span className="text-sm font-bold text-green-600">{maxLeads} leads</span>
+            )}
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="pt-0 flex-1">
-        <div className="h-[360px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart 
-              data={chartData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-            >
-                             <defs>
-                 <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                   <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
-                   <stop offset="100%" stopColor="#047857" stopOpacity={0.6}/>
-                 </linearGradient>
-               </defs>
-              <CartesianGrid 
-                strokeDasharray="3 3" 
-                className="opacity-20" 
-                stroke="#e5e7eb"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: '#6b7280' }}
-                tickLine={{ stroke: "#e5e7eb" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-                tickMargin={8}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: '#6b7280' }}
-                tickLine={{ stroke: "#e5e7eb" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-                allowDecimals={false}
-                tickMargin={8}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar
-                dataKey="leads"
-                radius={[6, 6, 0, 0]}
-                animationDuration={1500}
-                animationBegin={0}
+        {loading ? (
+          <ChartSkeleton />
+        ) : (
+          <div className="h-[360px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={chartData} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
               >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`}
-                    fill={getBarColor(entry.leads, index)}
-                    className="hover:opacity-80 transition-opacity duration-200"
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                    <stop offset="100%" stopColor="#047857" stopOpacity={0.6}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  className="opacity-20" 
+                  stroke="#e5e7eb"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tickLine={{ stroke: "#e5e7eb" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  tickMargin={8}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tickLine={{ stroke: "#e5e7eb" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  allowDecimals={false}
+                  tickMargin={8}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="leads"
+                  radius={[6, 6, 0, 0]}
+                  animationDuration={1500}
+                  animationBegin={0}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`}
+                      fill={getBarColor(entry.leads, index)}
+                      className="hover:opacity-80 transition-opacity duration-200"
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
-        {chartData.length === 0 && (
+        {!loading && chartData.length === 0 && (
           <div className="flex flex-col items-center justify-center h-[360px] text-muted-foreground">
             <TrendingUp className="w-12 h-12 text-gray-300 mb-4" />
             <p className="text-lg font-medium">Nenhum dado disponível</p>

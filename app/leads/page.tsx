@@ -572,10 +572,10 @@ export default function LeadsPage() {
                        {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
               <div className="lg:col-span-7 h-full">
-                <LeadsChart leads={filteredLeadsForStats} dateFilter={dateFilter} />
+                <LeadsChart leads={filteredLeadsForStats} dateFilter={dateFilter} loading={loading} />
               </div>
               <div className="lg:col-span-3 h-full">
-                <DemographicsChart leads={filteredLeadsForStats} dateFilter={dateFilter} />
+                <DemographicsChart leads={filteredLeadsForStats} dateFilter={dateFilter} loading={loading} />
               </div>
             </div>
 

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { GoogleAdsApi } from 'google-ads-api';
-import { timezoneUtils } from '../../../../lib/utils';
 
 // Cache para evitar múltiplas inicializações do cliente
 let googleAdsClient: GoogleAdsApi | null = null;
+
+// Cache para dados de campanhas (5 minutos)
+const campaignCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos em millisegundos
 
 // Função para inicializar o cliente Google Ads
 function initializeGoogleAdsClient() {
@@ -36,7 +39,33 @@ function initializeGoogleAdsClient() {
      return googleAdsClient;
  }
 
- // Função para agregar dados de campanhas por período
+// Função para gerenciar cache de dados
+function getCachedData(cacheKey: string) {
+  const cached = campaignCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedData(cacheKey: string, data: any) {
+  campaignCache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  // Limpar cache antigo periodicamente
+  if (campaignCache.size > 100) {
+    const now = Date.now();
+    for (const [key, value] of campaignCache.entries()) {
+      if (now - value.timestamp > CACHE_DURATION) {
+        campaignCache.delete(key);
+      }
+    }
+  }
+}
+
+ // Função otimizada para agregar dados de campanhas por período
  function aggregateCampaignData(campaigns: any[]) {
    const campaignMap = new Map();
 
@@ -52,10 +81,19 @@ function initializeGoogleAdsClient() {
            clicks: campaign.metrics?.clicks || 0,
            cost_micros: campaign.metrics?.cost_micros || 0,
            conversions: campaign.metrics?.conversions || 0,
-           average_cpc: campaign.metrics?.average_cpc || 0
+           average_cpc: campaign.metrics?.average_cpc || 0,
+           ctr: campaign.metrics?.ctr || 0,
+           average_cpm: campaign.metrics?.average_cpm || 0,
+           conversions_from_interactions_rate: campaign.metrics?.conversions_from_interactions_rate || 0
          },
          cpc_sum: campaign.metrics?.average_cpc || 0,
-         cpc_count: 1
+         cpc_count: 1,
+         ctr_sum: campaign.metrics?.ctr || 0,
+         ctr_count: 1,
+         cpm_sum: campaign.metrics?.average_cpm || 0,
+         cpm_count: 1,
+         conv_rate_sum: campaign.metrics?.conversions_from_interactions_rate || 0,
+         conv_rate_count: 1
        });
      } else {
        // Agregar dados à campanha existente
@@ -66,20 +104,45 @@ function initializeGoogleAdsClient() {
        existing.metrics.conversions += campaign.metrics?.conversions || 0;
        existing.cpc_sum += campaign.metrics?.average_cpc || 0;
        existing.cpc_count += 1;
+       existing.ctr_sum += campaign.metrics?.ctr || 0;
+       existing.ctr_count += 1;
+       existing.cpm_sum += campaign.metrics?.average_cpm || 0;
+       existing.cpm_count += 1;
+       existing.conv_rate_sum += campaign.metrics?.conversions_from_interactions_rate || 0;
+       existing.conv_rate_count += 1;
      }
    });
 
-   // Calcular CPC médio e retornar array
-   return Array.from(campaignMap.values()).map(campaign => ({
-     ...campaign,
-     metrics: {
+   // Calcular métricas médias e retornar array otimizado
+   return Array.from(campaignMap.values()).map(campaign => {
+     const metrics = {
        ...campaign.metrics,
-       average_cpc: campaign.cpc_count > 0 ? campaign.cpc_sum / campaign.cpc_count : 0
-     }
-   }));
+       average_cpc: campaign.cpc_count > 0 ? campaign.cpc_sum / campaign.cpc_count : 0,
+       ctr: campaign.ctr_count > 0 ? campaign.ctr_sum / campaign.ctr_count : 0,
+       average_cpm: campaign.cpm_count > 0 ? campaign.cpm_sum / campaign.cpm_count : 0,
+       conversions_from_interactions_rate: campaign.conv_rate_count > 0 ? campaign.conv_rate_sum / campaign.conv_rate_count : 0
+     };
+
+     // Calcular métricas derivadas
+     const cost = metrics.cost_micros / 1000000; // Converter micros para reais
+     const ctr_percentage = metrics.ctr * 100;
+     const cpm = metrics.average_cpm / 1000; // Converter para formato padrão
+
+     return {
+       ...campaign,
+       metrics: {
+         ...metrics,
+         cost_formatted: cost,
+         ctr_percentage,
+         cpm_formatted: cpm,
+         // Calcular ROI se houver conversões
+         roi: metrics.conversions > 0 ? ((metrics.conversions * 100) / cost) : 0
+       }
+     };
+   });
  }
 
- // Função para obter dados das campanhas
+ // Função otimizada para obter dados das campanhas
 async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?: string) {
   const client = initializeGoogleAdsClient();
   
@@ -89,17 +152,28 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
     refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
   });
 
+  // Gerar chave de cache única
+  const cacheKey = `campaigns_${customerId}_${dateFrom}_${dateTo}`;
+  
+  // Verificar cache primeiro
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    console.log('📦 Retornando dados do cache:', cacheKey);
+    return cachedData;
+  }
+
   try {
     let campaigns;
     
     if (dateFrom && dateTo) {
       // Se há filtro de data, usar query com segments.date
-      // Converter para timezone Brasil (UTC-3) antes de enviar para API
-      const fromDate = timezoneUtils.toBrazilTimezone(new Date(dateFrom));
-      const toDate = timezoneUtils.toBrazilTimezone(new Date(dateTo));
+      // REMOVIDA A CONVERSÃO DE TIMEZONE - USE AS DATAS DIRETAMENTE
+      const fromDate = dateFrom;
+      const toDate = dateTo;
       
       console.log('🔍 Aplicando filtro de data:', { fromDate, toDate });
       
+      // Query otimizada com melhor performance e estrutura
       const query = `
         SELECT
           campaign.id,
@@ -114,18 +188,23 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
           metrics.clicks,
           metrics.cost_micros,
           metrics.conversions,
-          metrics.average_cpc
+          metrics.average_cpc,
+          metrics.ctr,
+          metrics.average_cpm,
+          metrics.conversions_from_interactions_rate
         FROM campaign
         WHERE campaign.status = 'ENABLED'
           AND segments.date BETWEEN '${fromDate}' AND '${toDate}'
+          AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
         ORDER BY campaign.name, segments.date
+        LIMIT 10000
       `;
       
       console.log('🔍 Executando query GAQL com filtro de data:', query);
       campaigns = await customer.query(query);
       
          } else {
-       // Se não há filtro de data, usar query simples
+       // Query otimizada sem filtro de data
        const query = `
          SELECT
            campaign.id,
@@ -139,10 +218,15 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
            metrics.clicks,
            metrics.cost_micros,
            metrics.conversions,
-           metrics.average_cpc
+           metrics.average_cpc,
+           metrics.ctr,
+           metrics.average_cpm,
+           metrics.conversions_from_interactions_rate
          FROM campaign
          WHERE campaign.status = 'ENABLED'
+           AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
          ORDER BY campaign.name
+         LIMIT 10000
        `;
       
       console.log('🔍 Executando query GAQL sem filtro de data:', query);
@@ -167,9 +251,14 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
          originalCount: campaigns.length,
          aggregatedCount: aggregatedCampaigns.length
        });
+       
+       // Cache dos dados agregados
+       setCachedData(cacheKey, aggregatedCampaigns);
        return aggregatedCampaigns;
      }
 
+     // Cache dos dados sem agregação
+     setCachedData(cacheKey, campaigns);
      return campaigns;
     
   } catch (error) {
@@ -191,10 +280,15 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
             metrics.clicks,
             metrics.cost_micros,
             metrics.conversions,
-            metrics.average_cpc
+            metrics.average_cpc,
+            metrics.ctr,
+            metrics.average_cpm,
+            metrics.conversions_from_interactions_rate
           FROM campaign
           WHERE campaign.status = 'ENABLED'
+            AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
           ORDER BY campaign.name
+          LIMIT 10000
         `;
       
       return await customer.query(fallbackQuery);

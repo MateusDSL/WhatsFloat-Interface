@@ -38,7 +38,8 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession()
 
   // Se não estiver autenticado e tentar acessar uma rota protegida
-  if (!session && req.nextUrl.pathname !== '/login') {
+  // Excluir rotas da API do redirecionamento
+  if (!session && req.nextUrl.pathname !== '/login' && !req.nextUrl.pathname.startsWith('/api/')) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = '/login'
     return NextResponse.redirect(redirectUrl)

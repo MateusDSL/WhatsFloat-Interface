@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import { CalendarIcon, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import {
   format,
   addMonths,
@@ -21,22 +21,25 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useGoogleAds } from "@/hooks/useGoogleAds"
 
 interface DateRange {
   from: Date | undefined
   to: Date | undefined
 }
 
-interface AdvancedDatePickerProps {
+interface GoogleAdsDateFilterProps {
   value: DateRange
   onChange: (range: DateRange) => void
+  onDataFetch?: (data: any[]) => void
+  customerId?: string
   className?: string
 }
 
 const presetOptions = [
   {
     label: "Hoje",
-    description: "Campanhas iniciadas hoje",
+    description: "Dados de campanhas de hoje",
     getValue: () => ({
       from: startOfDay(new Date()),
       to: endOfDay(new Date()),
@@ -44,7 +47,7 @@ const presetOptions = [
   },
   {
     label: "Ontem",
-    description: "Campanhas iniciadas ontem",
+    description: "Dados de campanhas de ontem",
     getValue: () => ({
       from: startOfDay(subDays(new Date(), 1)),
       to: endOfDay(subDays(new Date(), 1)),
@@ -52,7 +55,7 @@ const presetOptions = [
   },
   {
     label: "Últimos 7 dias",
-    description: "Campanhas dos últimos 7 dias incluindo hoje",
+    description: "Dados dos últimos 7 dias incluindo hoje",
     getValue: () => ({
       from: startOfDay(subDays(new Date(), 6)),
       to: endOfDay(new Date()),
@@ -60,7 +63,7 @@ const presetOptions = [
   },
   {
     label: "Últimos 30 dias",
-    description: "Campanhas dos últimos 30 dias incluindo hoje",
+    description: "Dados dos últimos 30 dias incluindo hoje",
     getValue: () => ({
       from: startOfDay(subDays(new Date(), 29)),
       to: endOfDay(new Date()),
@@ -68,7 +71,7 @@ const presetOptions = [
   },
   {
     label: "Este mês",
-    description: "Todas as campanhas do mês atual",
+    description: "Todos os dados do mês atual",
     getValue: () => ({
       from: startOfMonth(new Date()),
       to: endOfMonth(new Date()),
@@ -76,7 +79,7 @@ const presetOptions = [
   },
   {
     label: "Mês passado",
-    description: "Todas as campanhas do mês anterior",
+    description: "Todos os dados do mês anterior",
     getValue: () => {
       const lastMonth = subMonthsDate(new Date(), 1)
       return {
@@ -87,7 +90,7 @@ const presetOptions = [
   },
   {
     label: "Este ano",
-    description: "Todas as campanhas do ano atual",
+    description: "Todos os dados do ano atual",
     getValue: () => ({
       from: startOfYear(new Date()),
       to: endOfYear(new Date()),
@@ -95,7 +98,7 @@ const presetOptions = [
   },
   {
     label: "Últimos 12 meses",
-    description: "Campanhas dos últimos 12 meses incluindo o mês atual",
+    description: "Dados dos últimos 12 meses incluindo o mês atual",
     getValue: () => ({
       from: startOfDay(subYears(new Date(), 1)),
       to: endOfDay(new Date()),
@@ -103,21 +106,71 @@ const presetOptions = [
   },
 ]
 
-export function AdvancedDatePicker({ value, onChange, className }: AdvancedDatePickerProps) {
+export function GoogleAdsDateFilter({ 
+  value, 
+  onChange, 
+  onDataFetch,
+  customerId,
+  className 
+}: GoogleAdsDateFilterProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [tempRange, setTempRange] = React.useState<DateRange>(value)
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const [selectedPreset, setSelectedPreset] = React.useState<string | null>(null)
+  const [isFetching, setIsFetching] = React.useState(false)
 
-  const handlePresetClick = (preset: (typeof presetOptions)[0]) => {
+  const { fetchCampaigns, loading, error } = useGoogleAds()
+
+  const handlePresetClick = async (preset: (typeof presetOptions)[0]) => {
     const range = preset.getValue()
     setTempRange(range)
     setSelectedPreset(preset.label)
+    
+    // Aplicar imediatamente se for um preset
+    await applyDateFilter(range)
   }
 
-  const handleApply = () => {
-    onChange(tempRange)
-    setIsOpen(false)
+  const applyDateFilter = async (dateRange: DateRange) => {
+    if (!dateRange.from) return
+
+    setIsFetching(true)
+    
+    try {
+      let dateFrom: string
+      let dateTo: string
+      
+      if (dateRange.to) {
+        // Se tem data final, usar o intervalo
+        dateFrom = dateRange.from.toISOString().split('T')[0]
+        dateTo = dateRange.to.toISOString().split('T')[0]
+      } else {
+        // Se só tem data inicial, usar apenas essa data (mesmo dia)
+        dateFrom = dateRange.from.toISOString().split('T')[0]
+        dateTo = dateFrom
+      }
+      
+      console.log('🔍 Aplicando filtro de data Google Ads:', { dateFrom, dateTo })
+      
+      // Buscar dados com filtro de data
+      await fetchCampaigns(customerId, dateFrom, dateTo)
+      
+      // Aplicar o filtro
+      onChange(dateRange)
+      setIsOpen(false)
+      
+      console.log('✅ Filtro de data aplicado com sucesso')
+      
+    } catch (err) {
+      console.error('❌ Erro ao aplicar filtro de data:', err)
+      // Em caso de erro, manter o filtro anterior
+      setTempRange(value)
+    } finally {
+      setIsFetching(false)
+    }
+  }
+
+  const handleApply = async () => {
+    await applyDateFilter(tempRange)
   }
 
   const handleCancel = () => {
@@ -128,9 +181,11 @@ export function AdvancedDatePicker({ value, onChange, className }: AdvancedDateP
 
   const handleDateClick = (date: Date) => {
     if (!tempRange.from || (tempRange.from && tempRange.to)) {
+      // Primeira seleção ou reset - selecionar apenas uma data
       setTempRange({ from: date, to: undefined })
       setSelectedPreset(null)
     } else if (tempRange.from && !tempRange.to) {
+      // Segunda seleção - criar intervalo
       if (date < tempRange.from) {
         setTempRange({ from: date, to: tempRange.from })
       } else {
@@ -242,9 +297,15 @@ export function AdvancedDatePicker({ value, onChange, className }: AdvancedDateP
               !value.from && !value.to && "text-muted-foreground",
               className,
             )}
+            disabled={isFetching}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value.from ? (
+            {isFetching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Carregando...
+              </>
+            ) : value.from ? (
               value.to ? (
                 <>
                   {format(value.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
@@ -274,6 +335,7 @@ export function AdvancedDatePicker({ value, onChange, className }: AdvancedDateP
                           selectedPreset === preset.label && "bg-primary text-primary-foreground",
                         )}
                         onClick={() => handlePresetClick(preset)}
+                        disabled={isFetching}
                       >
                         {preset.label}
                       </Button>
@@ -293,6 +355,7 @@ export function AdvancedDatePicker({ value, onChange, className }: AdvancedDateP
                         !selectedPreset && "bg-primary text-primary-foreground",
                       )}
                       onClick={() => setSelectedPreset(null)}
+                      disabled={isFetching}
                     >
                       Personalizado
                     </Button>
@@ -311,22 +374,44 @@ export function AdvancedDatePicker({ value, onChange, className }: AdvancedDateP
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between p-3 border-t">
-            <div className="text-sm text-muted-foreground">
-              {tempRange.from && tempRange.to && (
-                <>
-                  {format(tempRange.from, "dd/MM/yyyy", { locale: ptBR })} a{" "}
-                  {format(tempRange.to, "dd/MM/yyyy", { locale: ptBR })}
-                </>
-              )}
-            </div>
+                     {/* Footer */}
+           <div className="flex items-center justify-between p-3 border-t">
+             <div className="text-sm text-muted-foreground">
+               {tempRange.from && (
+                 tempRange.to ? (
+                   <>
+                     {format(tempRange.from, "dd/MM/yyyy", { locale: ptBR })} a{" "}
+                     {format(tempRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                   </>
+                 ) : (
+                   <>
+                     {format(tempRange.from, "dd/MM/yyyy", { locale: ptBR })}
+                   </>
+                 )
+               )}
+             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancel}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCancel}
+                disabled={isFetching}
+              >
                 Cancelar
               </Button>
-              <Button size="sm" onClick={handleApply}>
-                Aplicar
+                             <Button 
+                 size="sm" 
+                 onClick={handleApply}
+                 disabled={isFetching || !tempRange.from}
+               >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Aplicando...
+                  </>
+                ) : (
+                  'Aplicar'
+                )}
               </Button>
             </div>
           </div>

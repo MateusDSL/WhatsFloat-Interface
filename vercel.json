@@ -6,9 +6,27 @@
   "devCommand": "npm run dev",
   "regions": ["gru1"],
   "functions": {
-    "app/**/*.tsx": {
+    "app/google-ads/campaigns/route.ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/google-ads/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/google-ads/campaigns",
+      "destination": "/api/google-ads/campaigns"
+    }
+  ]
 }
+
 

@@ -177,7 +177,7 @@ const mapLeadToDisplay = (lead: Lead) => ({
   campaign: lead.utm_campaign,
   utm_term: lead.utm_term,
   utm_medium: lead.utm_medium,
-  beacon: lead.beacon,
+  beacon: Boolean(lead.is_becon), // Garantir que seja sempre boolean
   source: lead.origem || 'nao-identificado', // Fallback para 'nao-identificado' se origem estiver vazia
   createdAt: lead.created_at,
   status: lead.status || 'novo', // Fallback para 'novo' se status estiver vazio
@@ -199,6 +199,7 @@ export default function LeadsPage() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const leadsPerPage = 12
+  const [forceUpdate, setForceUpdate] = useState(0)
 
   // Reset page when filters change
   useEffect(() => {
@@ -206,7 +207,9 @@ export default function LeadsPage() {
   }, [searchTerm, sourceFilter, dateFilter])
 
   // Mapear leads do Supabase para o formato da interface
-  const mappedLeads = leads.map(mapLeadToDisplay)
+  const mappedLeads = useMemo(() => {
+    return leads.map(mapLeadToDisplay)
+  }, [leads, forceUpdate])
 
   // Gerar opções de filtro baseadas nos dados reais
   const getSourceFilterOptions = () => {
@@ -366,23 +369,51 @@ export default function LeadsPage() {
     !lead.source || lead.source === 'nao-identificado' || lead.source === 'Não Rastreada'
   ).length
 
-  const toggleBeacon = async (leadId: number) => {
+    const toggleBeacon = async (leadId: number) => {
     try {
       const lead = leads.find(l => l.id === leadId)
-      if (lead && lead.id !== undefined && lead.id !== null) {
-                 console.log('🔄 Alternando becon do lead:', leadId, 'de', lead.beacon, 'para', !lead.beacon)
-        await updateLead(lead.id, { beacon: !lead.beacon })
+      
+      if (!lead) {
         toast({
-                     title: "Becon atualizado",
-           description: `Becon ${!lead.beacon ? "ativado" : "desativado"} para ${lead.name}.`,
+          title: "Erro",
+          description: "Lead não encontrado.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      if (lead.id === undefined || lead.id === null) {
+        toast({
+          title: "Erro",
+          description: "ID do lead inválido.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      // Garantir que o valor seja um boolean
+      const currentBeaconValue = Boolean(lead.is_becon)
+      const newBeaconValue = !currentBeaconValue
+      
+      // Atualizar o lead no banco de dados
+      const updatedLead = await updateLead(lead.id, { is_becon: newBeaconValue })
+      
+      if (updatedLead) {
+        // Forçar re-renderização
+        setForceUpdate(prev => prev + 1)
+        toast({
+          title: "Becon atualizado",
+          description: `Becon ${newBeaconValue ? "ativado" : "desativado"} para ${lead.name}.`,
           variant: "success",
         })
+      } else {
+        throw new Error('Falha ao atualizar o lead')
       }
     } catch (error) {
-               console.error('❌ Erro ao alternar becon:', error)
+      console.error('❌ Erro ao alternar becon:', error)
       toast({
         title: "Erro",
-                 description: "Erro ao atualizar becon do lead.",
+        description: "Erro ao atualizar becon do lead.",
         variant: "destructive",
       })
     }
@@ -431,7 +462,7 @@ export default function LeadsPage() {
   const handleBulkBeaconToggle = async (beaconValue: boolean) => {
     try {
       const leadsToUpdate = selectedLeads.length
-      await Promise.all(selectedLeads.map(id => updateLead(id, { beacon: beaconValue })))
+      await Promise.all(selectedLeads.map(id => updateLead(id, { is_becon: beaconValue })))
       setSelectedLeads([])
               toast({
                    title: "Becon atualizado",
@@ -763,10 +794,13 @@ export default function LeadsPage() {
                             <TableCell className="w-20">
                               <Badge
                                 className={`cursor-pointer ${lead.beacon ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"}`}
-                                onClick={() => lead.id && toggleBeacon(lead.id)}
+                                onClick={() => {
+                                  lead.id && toggleBeacon(lead.id)
+                                }}
                               >
                                 {lead.beacon ? "Sim" : "Não"}
                               </Badge>
+
                             </TableCell>
                           </TableRow>
                         ))

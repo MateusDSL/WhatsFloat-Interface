@@ -14,7 +14,6 @@ export function useLeads() {
   const fetchLeads = async () => {
     try {
       setLoading(true)
-      console.log('🔄 Buscando leads...')
       const { data, error } = await supabase
         .from('leads')
         .select('*')
@@ -24,7 +23,6 @@ export function useLeads() {
         throw error
       }
 
-      console.log('✅ Leads carregados:', data?.length || 0)
       setLeads(data || [])
       lastFetchTime.current = new Date()
     } catch (err) {
@@ -38,7 +36,6 @@ export function useLeads() {
   // Buscar apenas leads novos
   const fetchNewLeads = async () => {
     try {
-      console.log('🔄 Verificando novos leads via polling...')
       const { data, error } = await supabase
         .from('leads')
         .select('*')
@@ -51,14 +48,12 @@ export function useLeads() {
       }
 
       if (data && data.length > 0) {
-        console.log('➕ Polling encontrou novos leads:', data.length)
         setLeads(prev => {
           const newLeads = [...data, ...prev]
           // Remover duplicatas baseado no ID
           const uniqueLeads = newLeads.filter((lead, index, self) => 
             index === self.findIndex(l => l.id === lead.id)
           )
-          console.log('📊 Total de leads após polling:', uniqueLeads.length)
           return uniqueLeads
         })
         lastFetchTime.current = new Date()
@@ -71,7 +66,6 @@ export function useLeads() {
   // Adicionar novo lead
   const addLead = async (lead: Omit<Lead, 'id' | 'created_at'>) => {
     try {
-      console.log('➕ Adicionando lead:', lead)
       const { data, error } = await supabase
         .from('leads')
         .insert([lead])
@@ -81,7 +75,6 @@ export function useLeads() {
         throw error
       }
 
-      console.log('✅ Lead adicionado:', data?.[0])
       return data?.[0]
     } catch (err) {
       console.error('❌ Erro ao adicionar lead:', err)
@@ -93,7 +86,6 @@ export function useLeads() {
   // Atualizar lead
   const updateLead = async (id: number, updates: Partial<Lead>) => {
     try {
-      console.log('🔄 Atualizando lead:', id, 'com:', updates)
       const { data, error } = await supabase
         .from('leads')
         .update(updates)
@@ -104,14 +96,18 @@ export function useLeads() {
         throw error
       }
 
-      console.log('✅ Lead atualizado:', data?.[0])
+      if (!data || data.length === 0) {
+        throw new Error('Lead não encontrado')
+      }
+
+      const updatedLead = data[0]
       
       // Atualizar estado local imediatamente
       setLeads(prev => prev.map(lead => 
-        lead.id === id ? { ...lead, ...updates } : lead
+        lead.id === id ? { ...lead, ...updatedLead } : lead
       ))
       
-      return data?.[0]
+      return updatedLead
     } catch (err) {
       console.error('❌ Erro ao atualizar lead:', err)
       setError(err instanceof Error ? err.message : 'Erro ao atualizar lead')
@@ -122,7 +118,6 @@ export function useLeads() {
   // Deletar lead
   const deleteLead = async (id: number) => {
     try {
-      console.log('🗑️ Deletando lead:', id)
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -131,8 +126,6 @@ export function useLeads() {
       if (error) {
         throw error
       }
-
-      console.log('✅ Lead deletado com sucesso')
       
       // Atualizar estado local imediatamente
       setLeads(prev => prev.filter(lead => lead.id !== id))
@@ -147,7 +140,6 @@ export function useLeads() {
   // Deletar múltiplos leads
   const deleteMultipleLeads = async (ids: number[]) => {
     try {
-      console.log('🗑️ Deletando múltiplos leads:', ids)
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -156,8 +148,6 @@ export function useLeads() {
       if (error) {
         throw error
       }
-
-      console.log('✅ Leads deletados com sucesso')
       
       // Atualizar estado local imediatamente
       setLeads(prev => prev.filter(lead => !ids.includes(lead.id!)))
@@ -171,7 +161,6 @@ export function useLeads() {
 
   // Iniciar polling
   const startPolling = () => {
-    console.log('🔄 Iniciando polling automático...')
     if (pollingInterval.current) {
       clearInterval(pollingInterval.current)
     }
@@ -181,23 +170,17 @@ export function useLeads() {
     
     if (interval > 0) {
       pollingInterval.current = setInterval(() => {
-        console.log('🔄 Executando polling...')
         fetchNewLeads()
       }, interval)
     }
   }
 
   useEffect(() => {
-    console.log('🚀 Iniciando useLeads...')
     fetchLeads()
-    
-    // Iniciar polling imediatamente (sem tentar real-time)
-    console.log('🚀 Usando polling para atualizações automáticas...')
     startPolling()
 
     // Cleanup
     return () => {
-      console.log('🧹 Limpando polling...')
       if (pollingInterval.current) {
         clearInterval(pollingInterval.current)
       }
@@ -206,7 +189,6 @@ export function useLeads() {
 
   // Polling sempre ativo com intervalo fixo de 5 segundos
   useEffect(() => {
-    console.log('🔄 Polling sempre ativo com intervalo de 5 segundos')
     startPolling()
   }, [])
 

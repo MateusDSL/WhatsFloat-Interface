@@ -33,6 +33,6 @@ export interface Lead {
   qualification_status: string
   origem: string
   comment: string
-  beacon: any
+  is_becon: boolean
   status: string
 }

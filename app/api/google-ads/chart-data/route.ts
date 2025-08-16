@@ -50,8 +50,9 @@ async function getChartData(customerId?: string, dateFrom?: string, dateTo?: str
     
     if (dateFrom && dateTo) {
       // Query com segments.date para dados diários
-      const fromDate = new Date(dateFrom).toISOString().split('T')[0];
-      const toDate = new Date(dateTo).toISOString().split('T')[0];
+      // Garantir que as datas sejam tratadas no fuso horário do Brasil
+      const fromDate = new Date(dateFrom + 'T00:00:00-03:00').toISOString().split('T')[0];
+      const toDate = new Date(dateTo + 'T23:59:59-03:00').toISOString().split('T')[0];
       
       console.log('📊 Chart API - Aplicando filtro de data:', { 
         dateFrom, 
@@ -71,11 +72,14 @@ async function getChartData(customerId?: string, dateFrom?: string, dateTo?: str
           metrics.clicks,
           metrics.cost_micros,
           metrics.conversions,
-          metrics.average_cpc
+          metrics.average_cpc,
+          metrics.conversions_from_interactions_rate
         FROM campaign
         WHERE campaign.status = 'ENABLED'
           AND segments.date BETWEEN '${fromDate}' AND '${toDate}'
+          AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
         ORDER BY segments.date, campaign.name
+        LIMIT 10000
       `;
       
       console.log('📊 Chart API - Executando query GAQL:', query);
@@ -92,10 +96,13 @@ async function getChartData(customerId?: string, dateFrom?: string, dateTo?: str
           metrics.clicks,
           metrics.cost_micros,
           metrics.conversions,
-          metrics.average_cpc
+          metrics.average_cpc,
+          metrics.conversions_from_interactions_rate
         FROM campaign
         WHERE campaign.status = 'ENABLED'
+          AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
         ORDER BY campaign.name
+        LIMIT 10000
       `;
       
       console.log('📊 Chart API - Executando query sem filtro de data:', query);
@@ -126,10 +133,13 @@ async function getChartData(customerId?: string, dateFrom?: string, dateTo?: str
           metrics.clicks,
           metrics.cost_micros,
           metrics.conversions,
-          metrics.average_cpc
+          metrics.average_cpc,
+          metrics.conversions_from_interactions_rate
         FROM campaign
         WHERE campaign.status = 'ENABLED'
+          AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
         ORDER BY campaign.name
+        LIMIT 10000
       `;
       
       return await customer.query(fallbackQuery);

@@ -10,6 +10,8 @@ import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { GoogleAdsDateFilter } from './google-ads-date-filter';
+import { GoogleAdsLocationChart } from './google-ads-location-chart';
+import { GoogleAdsChart } from './google-ads-chart';
 
 interface GoogleAdsDashboardProps {
   customerId?: string;
@@ -132,6 +134,10 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
           aValue = (a.metrics?.conversions || 0) / (a.metrics?.clicks || 1);
           bValue = (b.metrics?.conversions || 0) / (b.metrics?.clicks || 1);
           break;
+        case 'costPerConversion':
+          aValue = (a.metrics?.cost_micros || 0) / (a.metrics?.conversions || 1);
+          bValue = (b.metrics?.cost_micros || 0) / (b.metrics?.conversions || 1);
+          break;
         case 'budget':
           aValue = a.campaign_budget?.amount_micros || 0;
           bValue = b.campaign_budget?.amount_micros || 0;
@@ -213,15 +219,18 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
     </TableRow>
   );
 
     return (
     <div className="flex-1 p-4 space-y-4 overflow-auto">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {campaignsLoading ? (
           <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
@@ -229,53 +238,6 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
           </>
         ) : (
           <>
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-900">Total de Campanhas</CardTitle>
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-900 mb-2">{campaigns.length}</div>
-                <p className="text-xs text-gray-600 font-medium">Campanhas ativas</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-900">Total de Impressões</CardTitle>
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Eye className="h-4 w-4 text-green-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatGoogleAdsData.formatImpressions(
-                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0)
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 font-medium">Visualizações</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-900">Total de Cliques</CardTitle>
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <MousePointer className="h-4 w-4 text-green-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatGoogleAdsData.formatImpressions(
-                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 font-medium">Interações</p>
-              </CardContent>
-            </Card>
-            
             <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-sm font-semibold text-gray-900">Custo Total</CardTitle>
@@ -292,8 +254,107 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                 <p className="text-xs text-gray-600 font-medium">Investimento</p>
               </CardContent>
             </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Conversões</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0).toFixed(2)}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Total de conversões</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Cliques</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <MousePointer className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {formatGoogleAdsData.formatImpressions(
+                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Total de cliques</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">CTR</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <MousePointer className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {(() => {
+                    const totalClicks = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0);
+                    const totalImpressions = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0);
+                    return totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
+                  })()}%
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Taxa de cliques</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">CPC</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Eye className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {(() => {
+                    const totalCost = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
+                    const totalClicks = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0);
+                    return totalClicks > 0 ? formatGoogleAdsData.formatCost(totalCost / totalClicks) : 'R$ 0,00';
+                  })()}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Custo por clique</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-900">Custo por Conversão</CardTitle>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {(() => {
+                    const totalCost = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
+                    const totalConversions = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0);
+                    return totalConversions > 0 ? formatGoogleAdsData.formatCost(totalCost / totalConversions) : 'R$ 0,00';
+                  })()}
+                </div>
+                <p className="text-xs text-gray-600 font-medium">Custo por conversão</p>
+              </CardContent>
+            </Card>
           </>
         )}
+      </div>
+
+      {/* Chart Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        <div className="lg:col-span-7">
+          <GoogleAdsChart customerId={customerId} dateFilter={dateFilter} />
+        </div>
+        <div className="lg:col-span-3">
+          <GoogleAdsLocationChart customerId={customerId} dateFilter={dateFilter} />
+        </div>
       </div>
 
       {/* Campanhas Table */}
@@ -419,6 +480,15 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      </TableHead>
                      <TableHead 
                        className="w-32 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                       onClick={() => handleSort('costPerConversion')}
+                     >
+                       <div className="flex items-center justify-center gap-1">
+                         Custo/Conv.
+                         {getSortIcon('costPerConversion')}
+                       </div>
+                     </TableHead>
+                     <TableHead 
+                       className="w-32 text-center cursor-pointer hover:bg-gray-50 transition-colors"
                        onClick={() => handleSort('conversionRate')}
                      >
                        <div className="flex items-center justify-center gap-1">
@@ -471,6 +541,13 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                          {formatGoogleAdsData.formatConversions(campaign.metrics?.conversions || 0)}
                        </TableCell>
                        <TableCell className="text-center">
+                         {(() => {
+                           const cost = campaign.metrics?.cost_micros || 0;
+                           const conversions = campaign.metrics?.conversions || 0;
+                           return conversions > 0 ? formatGoogleAdsData.formatCost(cost / conversions) : 'R$ 0,00';
+                         })()}
+                       </TableCell>
+                       <TableCell className="text-center">
                          {formatGoogleAdsData.calculateConversionRate(campaign.metrics?.conversions || 0, campaign.metrics?.clicks || 0)}
                        </TableCell>
                        <TableCell className="text-center">
@@ -517,6 +594,13 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                         {formatGoogleAdsData.formatConversions(
                           sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0)
                         )}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-gray-700">
+                        {(() => {
+                          const totalCost = sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
+                          const totalConversions = sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0);
+                          return totalConversions > 0 ? formatGoogleAdsData.formatCost(totalCost / totalConversions) : 'R$ 0,00';
+                        })()}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
                         {formatGoogleAdsData.calculateConversionRate(

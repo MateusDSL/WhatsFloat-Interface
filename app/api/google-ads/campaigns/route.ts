@@ -1,43 +1,10 @@
 import { NextResponse } from 'next/server';
-import { GoogleAdsApi } from 'google-ads-api';
-
-// Cache para evitar múltiplas inicializações do cliente
-let googleAdsClient: GoogleAdsApi | null = null;
+import { getGoogleAdsCustomer } from '@/lib/google-ads-client';
+import { campaignsQuerySchema, customQuerySchema, validateUrlParams, validateRequestBody, formatValidationErrors } from '@/lib/validation-schemas';
 
 // Cache para dados de campanhas (5 minutos)
 const campaignCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos em millisegundos
-
-// Função para inicializar o cliente Google Ads
-function initializeGoogleAdsClient() {
-  if (!googleAdsClient) {
-    // Validação das variáveis de ambiente
-    const requiredEnvVars = {
-      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-      GOOGLE_DEVELOPER_TOKEN: process.env.GOOGLE_DEVELOPER_TOKEN,
-      GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
-      GOOGLE_LOGIN_CUSTOMER_ID: process.env.GOOGLE_LOGIN_CUSTOMER_ID,
-    };
-
-    // Verifica se todas as variáveis estão presentes
-    const missingVars = Object.entries(requiredEnvVars)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingVars.length > 0) {
-      throw new Error(`Variáveis de ambiente ausentes: ${missingVars.join(', ')}`);
-    }
-
-    googleAdsClient = new GoogleAdsApi({
-      client_id: requiredEnvVars.GOOGLE_CLIENT_ID!,
-      client_secret: requiredEnvVars.GOOGLE_CLIENT_SECRET!,
-      developer_token: requiredEnvVars.GOOGLE_DEVELOPER_TOKEN!,
-    });
-  }
-
-     return googleAdsClient;
- }
 
 // Função para gerenciar cache de dados
 function getCachedData(cacheKey: string) {
@@ -144,13 +111,7 @@ function setCachedData(cacheKey: string, data: any) {
 
  // Função otimizada para obter dados das campanhas
 async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?: string) {
-  const client = initializeGoogleAdsClient();
-  
-  const customer = client.Customer({
-    customer_id: customerId || process.env.GOOGLE_CUSTOMER_ID || 'ID_DA_CONTA_ALVO',
-    login_customer_id: process.env.GOOGLE_LOGIN_CUSTOMER_ID!,
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-  });
+  const customer = getGoogleAdsCustomer(customerId);
 
   // Gerar chave de cache única
   const cacheKey = `campaigns_${customerId}_${dateFrom}_${dateTo}`;
@@ -300,13 +261,7 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
 
 // Função para obter dados de anúncios
 async function getAdsData(customerId?: string) {
-  const client = initializeGoogleAdsClient();
-  
-  const customer = client.Customer({
-    customer_id: customerId || process.env.GOOGLE_CUSTOMER_ID || 'ID_DA_CONTA_ALVO',
-    login_customer_id: process.env.GOOGLE_LOGIN_CUSTOMER_ID!,
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-  });
+  const customer = getGoogleAdsCustomer(customerId);
 
   const ads = await customer.query(`
     SELECT
@@ -330,13 +285,7 @@ async function getAdsData(customerId?: string) {
 
 // Função para obter dados de palavras-chave
 async function getKeywordsData(customerId?: string) {
-  const client = initializeGoogleAdsClient();
-  
-  const customer = client.Customer({
-    customer_id: customerId || process.env.GOOGLE_CUSTOMER_ID || 'ID_DA_CONTA_ALVO',
-    login_customer_id: process.env.GOOGLE_LOGIN_CUSTOMER_ID!,
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-  });
+  const customer = getGoogleAdsCustomer(customerId);
 
   const keywords = await customer.query(`
     SELECT
@@ -357,22 +306,38 @@ async function getKeywordsData(customerId?: string) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const dataType = searchParams.get('type') || 'campaigns';
-    const customerId = searchParams.get('customerId');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
+    
+    // Validar parâmetros de entrada
+    let validatedParams;
+    try {
+      validatedParams = validateUrlParams(campaignsQuerySchema, searchParams);
+    } catch (error) {
+      if (error instanceof Error) {
+        return NextResponse.json(
+          { 
+            error: 'Parâmetros inválidos',
+            details: formatValidationErrors(error as any),
+            help: 'Verifique os parâmetros da requisição'
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
+    const { customerId, dateFrom, dateTo, type = 'campaigns' } = validatedParams;
 
     let data;
     
-    switch (dataType) {
+    switch (type) {
       case 'campaigns':
-        data = await getCampaignsData(customerId || undefined, dateFrom || undefined, dateTo || undefined);
+        data = await getCampaignsData(customerId, dateFrom, dateTo);
         break;
       case 'ads':
-        data = await getAdsData(customerId || undefined);
+        data = await getAdsData(customerId);
         break;
       case 'keywords':
-        data = await getKeywordsData(customerId || undefined);
+        data = await getKeywordsData(customerId);
         break;
       default:
         return NextResponse.json(
@@ -386,7 +351,7 @@ export async function GET(request: Request) {
       success: true,
       data,
       timestamp: new Date().toISOString(),
-      type: dataType
+      type
     });
 
     // Cache por 5 minutos para otimizar performance
@@ -447,22 +412,28 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { query, customerId } = body;
-
-    if (!query) {
-      return NextResponse.json(
-        { error: 'Query é obrigatória' },
-        { status: 400 }
-      );
+    
+    // Validar body da requisição
+    let validatedBody;
+    try {
+      validatedBody = validateRequestBody(customQuerySchema, body);
+    } catch (error) {
+      if (error instanceof Error) {
+        return NextResponse.json(
+          { 
+            error: 'Dados inválidos',
+            details: formatValidationErrors(error as any),
+            help: 'Verifique o formato dos dados enviados'
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
     }
 
-    const client = initializeGoogleAdsClient();
-    
-    const customer = client.Customer({
-      customer_id: customerId || process.env.GOOGLE_CUSTOMER_ID || 'ID_DA_CONTA_ALVO',
-      login_customer_id: process.env.GOOGLE_LOGIN_CUSTOMER_ID!,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-    });
+    const { query, customerId } = validatedBody;
+
+    const customer = getGoogleAdsCustomer(customerId);
 
     const data = await customer.query(query);
 

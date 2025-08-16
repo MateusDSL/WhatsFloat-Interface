@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import { demographicsQuerySchema, validateUrlParams, formatValidationErrors } from '@/lib/validation-schemas';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get('customerId');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
+    
+    // Validar parâmetros de entrada
+    let validatedParams;
+    try {
+      validatedParams = validateUrlParams(demographicsQuerySchema, searchParams);
+    } catch (error) {
+      if (error instanceof Error) {
+        return NextResponse.json(
+          { 
+            error: 'Parâmetros inválidos',
+            details: formatValidationErrors(error as any),
+            help: 'Verifique os parâmetros da requisição'
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
+    const { customerId, dateFrom, dateTo } = validatedParams;
 
     if (!customerId) {
       return NextResponse.json({ error: 'Customer ID é obrigatório' }, { status: 400 });

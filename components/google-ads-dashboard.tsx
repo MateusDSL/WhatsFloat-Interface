@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useGoogleAds, formatGoogleAdsData } from '../hooks/useGoogleAds';
+import { useGoogleAdsDashboard } from '../hooks/useGoogleAdsDashboard';
+import { GoogleAdsFormatters } from '@/lib/google-ads-formatters';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -10,7 +10,6 @@ import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { GoogleAdsDateFilter } from './google-ads-date-filter';
-import { GoogleAdsLocationChart } from './google-ads-location-chart';
 import { GoogleAdsChart } from './google-ads-chart';
 
 interface GoogleAdsDashboardProps {
@@ -18,180 +17,28 @@ interface GoogleAdsDashboardProps {
 }
 
 export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Configurar filtro padrão para últimos 7 dias
-  const getDefaultDateFilter = () => {
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    
-    const from = new Date(sevenDaysAgo);
-    from.setHours(0, 0, 0, 0);
-    
-    const to = new Date(today);
-    to.setHours(23, 59, 59, 999);
-    
-    return {
-      from,
-      to,
-    };
-  };
-  
-  const [dateFilter, setDateFilter] = useState<{
-    from: Date | undefined
-    to: Date | undefined
-  }>(getDefaultDateFilter());
-  
-  // Estado para ordenação
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'asc' | 'desc';
-  } | null>(null);
-  
-  // Ref para debounce
-  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  
+  // Usar o hook otimizado
   const {
-    data,
+    searchTerm,
+    setSearchTerm,
+    dateFilter,
+    setDateFilter,
+    sortConfig,
     loading: campaignsLoading,
     error: campaignsError,
-    fetchCampaigns,
-    clearError: clearCampaignsError
-  } = useGoogleAds();
-  
-  const campaigns = data?.data || [];
+    clearError: clearCampaignsError,
+    sortedCampaigns,
+    aggregatedMetrics,
+    handleSort,
+    clearSort,
+    getSortIcon,
+    debugInfo
+  } = useGoogleAdsDashboard(customerId);
 
-  // Carrega dados iniciais e quando o filtro de data muda
-  useEffect(() => {
-    // Limpar timeout anterior
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    
-    // Debounce de 500ms para evitar múltiplas requisições
-    debounceRef.current = setTimeout(() => {
-      // Converter para formato ISO string antes de enviar para API
-      const dateFrom = dateFilter.from ? dateFilter.from.toISOString().split('T')[0] : undefined;
-      const dateTo = dateFilter.to ? dateFilter.to.toISOString().split('T')[0] : undefined;
-      
-      console.log('🔍 Filtro de data:', { dateFrom, dateTo });
-      fetchCampaigns(customerId, dateFrom, dateTo);
-    }, 500);
-    
-    // Cleanup function
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [customerId, dateFilter.from, dateFilter.to]);
-
-  // Filtros - agora apenas busca por nome, pois o filtro de data é aplicado na API
-  const filteredCampaigns = campaigns.filter((campaign: any) => {
-    if (!searchTerm) return true;
-    return campaign.campaign.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
-  // Função para ordenar dados
-  const sortedCampaigns = useMemo(() => {
-    if (!sortConfig) return filteredCampaigns;
-
-    return [...filteredCampaigns].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortConfig.key) {
-        case 'name':
-          aValue = a.campaign.name.toLowerCase();
-          bValue = b.campaign.name.toLowerCase();
-          break;
-        case 'impressions':
-          aValue = a.metrics?.impressions || 0;
-          bValue = b.metrics?.impressions || 0;
-          break;
-        case 'clicks':
-          aValue = a.metrics?.clicks || 0;
-          bValue = b.metrics?.clicks || 0;
-          break;
-        case 'ctr':
-          aValue = (a.metrics?.clicks || 0) / (a.metrics?.impressions || 1);
-          bValue = (b.metrics?.clicks || 0) / (b.metrics?.impressions || 1);
-          break;
-        case 'cost':
-          aValue = a.metrics?.cost_micros || 0;
-          bValue = b.metrics?.cost_micros || 0;
-          break;
-        case 'cpc':
-          aValue = a.metrics?.average_cpc || 0;
-          bValue = b.metrics?.average_cpc || 0;
-          break;
-        case 'conversions':
-          aValue = a.metrics?.conversions || 0;
-          bValue = b.metrics?.conversions || 0;
-          break;
-        case 'conversionRate':
-          aValue = (a.metrics?.conversions || 0) / (a.metrics?.clicks || 1);
-          bValue = (b.metrics?.conversions || 0) / (b.metrics?.clicks || 1);
-          break;
-        case 'costPerConversion':
-          aValue = (a.metrics?.cost_micros || 0) / (a.metrics?.conversions || 1);
-          bValue = (b.metrics?.cost_micros || 0) / (b.metrics?.conversions || 1);
-          break;
-        case 'budget':
-          aValue = a.campaign_budget?.amount_micros || 0;
-          bValue = b.campaign_budget?.amount_micros || 0;
-          break;
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
-  }, [filteredCampaigns, sortConfig]);
-
-  // Função para lidar com ordenação
-  const handleSort = (key: string) => {
-    setSortConfig(current => {
-      if (current?.key === key) {
-        return {
-          key,
-          direction: current.direction === 'asc' ? 'desc' : 'asc'
-        };
-      }
-      return { key, direction: 'asc' };
-    });
-  };
-
-  // Função para obter ícone de ordenação
-  const getSortIcon = (key: string) => {
-    if (sortConfig?.key !== key) {
-      return <ChevronUp className="w-4 h-4 opacity-30" />;
-    }
-    return sortConfig.direction === 'asc' 
-      ? <ChevronUp className="w-4 h-4" />
-      : <ChevronDown className="w-4 h-4" />;
-  };
-
-  // Debug logs (reduzidos para melhorar performance)
+  // Debug logs otimizados
   if (process.env.NODE_ENV === 'development') {
-    console.log('📊 Total de campanhas da API:', campaigns.length);
-    console.log('✅ Campanhas filtradas:', filteredCampaigns.length);
-    console.log('🎯 Filtro de data ativo:', dateFilter.from && dateFilter.to ? 'SIM' : 'NÃO');
+    console.log('📊 Debug Info:', debugInfo);
   }
-
-
-
-  // Função para limpar ordenação
-  const clearSort = () => {
-    setSortConfig(null);
-  };
 
   // Componentes de skeleton
   const StatCardSkeleton = () => (
@@ -247,9 +94,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatGoogleAdsData.formatCost(
-                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0)
-                  )}
+                  {GoogleAdsFormatters.formatCost(aggregatedMetrics.totalCost)}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Investimento</p>
               </CardContent>
@@ -264,7 +109,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0).toFixed(2)}
+                  {aggregatedMetrics.totalConversions.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Total de conversões</p>
               </CardContent>
@@ -279,9 +124,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatGoogleAdsData.formatImpressions(
-                    campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-                  )}
+                  {GoogleAdsFormatters.formatImpressions(aggregatedMetrics.totalClicks)}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Total de cliques</p>
               </CardContent>
@@ -296,11 +139,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {(() => {
-                    const totalClicks = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0);
-                    const totalImpressions = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0);
-                    return totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
-                  })()}%
+                  {aggregatedMetrics.averageCTR}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Taxa de cliques</p>
               </CardContent>
@@ -315,11 +154,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {(() => {
-                    const totalCost = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
-                    const totalClicks = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0);
-                    return totalClicks > 0 ? formatGoogleAdsData.formatCost(totalCost / totalClicks) : 'R$ 0,00';
-                  })()}
+                  {aggregatedMetrics.averageCPC}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Custo por clique</p>
               </CardContent>
@@ -334,11 +169,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {(() => {
-                    const totalCost = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
-                    const totalConversions = campaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0);
-                    return totalConversions > 0 ? formatGoogleAdsData.formatCost(totalCost / totalConversions) : 'R$ 0,00';
-                  })()}
+                  {aggregatedMetrics.averageCostPerConversion}
                 </div>
                 <p className="text-xs text-gray-600 font-medium">Custo por conversão</p>
               </CardContent>
@@ -348,9 +179,8 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
       </div>
 
       {/* Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <GoogleAdsChart customerId={customerId} dateFilter={dateFilter} />
-        <GoogleAdsLocationChart customerId={customerId} dateFilter={dateFilter} />
       </div>
 
       {/* Campanhas Table */}
@@ -417,7 +247,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center gap-1">
                          Campanha
-                         {getSortIcon('name')}
+                         <span className={getSortIcon('name').className}>{getSortIcon('name').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -426,7 +256,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Impressões
-                         {getSortIcon('impressions')}
+                         <span className={getSortIcon('impressions').className}>{getSortIcon('impressions').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -435,7 +265,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Cliques
-                         {getSortIcon('clicks')}
+                         <span className={getSortIcon('clicks').className}>{getSortIcon('clicks').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -444,7 +274,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          CTR
-                         {getSortIcon('ctr')}
+                         <span className={getSortIcon('ctr').className}>{getSortIcon('ctr').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -453,7 +283,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Custo
-                         {getSortIcon('cost')}
+                         <span className={getSortIcon('cost').className}>{getSortIcon('cost').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -462,7 +292,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          CPC Médio
-                         {getSortIcon('cpc')}
+                         <span className={getSortIcon('cpc').className}>{getSortIcon('cpc').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -471,7 +301,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Conversões
-                         {getSortIcon('conversions')}
+                         <span className={getSortIcon('conversions').className}>{getSortIcon('conversions').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -480,7 +310,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Custo/Conv.
-                         {getSortIcon('costPerConversion')}
+                         <span className={getSortIcon('costPerConversion').className}>{getSortIcon('costPerConversion').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -489,7 +319,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Taxa Conv.
-                         {getSortIcon('conversionRate')}
+                         <span className={getSortIcon('conversionRate').className}>{getSortIcon('conversionRate').icon}</span>
                        </div>
                      </TableHead>
                      <TableHead 
@@ -498,7 +328,7 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                      >
                        <div className="flex items-center justify-center gap-1">
                          Orçamento
-                         {getSortIcon('budget')}
+                         <span className={getSortIcon('budget').className}>{getSortIcon('budget').icon}</span>
                        </div>
                      </TableHead>
                    </TableRow>
@@ -519,36 +349,32 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                          <div className="text-sm">{campaign.campaign.name}</div>
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.formatImpressions(campaign.metrics?.impressions || 0)}
+                         {GoogleAdsFormatters.formatImpressions(campaign.metrics?.impressions || 0)}
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.formatImpressions(campaign.metrics?.clicks || 0)}
+                         {GoogleAdsFormatters.formatImpressions(campaign.metrics?.clicks || 0)}
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.calculateCTR(campaign.metrics?.clicks || 0, campaign.metrics?.impressions || 0)}
+                         {GoogleAdsFormatters.calculateCTR(campaign.metrics?.clicks || 0, campaign.metrics?.impressions || 0)}
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.formatCost(campaign.metrics?.cost_micros || 0)}
+                         {GoogleAdsFormatters.formatCost(campaign.metrics?.cost_micros || 0)}
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.formatAvgCPC(campaign.metrics?.average_cpc || 0)}
+                         {GoogleAdsFormatters.formatAvgCPC(campaign.metrics?.average_cpc || 0)}
                        </TableCell>
                        <TableCell className="text-center">
-                         {formatGoogleAdsData.formatConversions(campaign.metrics?.conversions || 0)}
+                         {GoogleAdsFormatters.formatConversions(campaign.metrics?.conversions || 0)}
                        </TableCell>
-                       <TableCell className="text-center">
-                         {(() => {
-                           const cost = campaign.metrics?.cost_micros || 0;
-                           const conversions = campaign.metrics?.conversions || 0;
-                           return conversions > 0 ? formatGoogleAdsData.formatCost(cost / conversions) : 'R$ 0,00';
-                         })()}
-                       </TableCell>
-                       <TableCell className="text-center">
-                         {formatGoogleAdsData.calculateConversionRate(campaign.metrics?.conversions || 0, campaign.metrics?.clicks || 0)}
-                       </TableCell>
-                       <TableCell className="text-center">
-                         {formatGoogleAdsData.formatCost(campaign.campaign_budget?.amount_micros || 0)}
-                                             </TableCell>
+                                                <TableCell className="text-center">
+                           {GoogleAdsFormatters.calculateCostPerConversion(campaign.metrics?.cost_micros || 0, campaign.metrics?.conversions || 0)}
+                         </TableCell>
+                         <TableCell className="text-center">
+                           {GoogleAdsFormatters.calculateConversionRate(campaign.metrics?.conversions || 0, campaign.metrics?.clicks || 0)}
+                         </TableCell>
+                         <TableCell className="text-center">
+                           {GoogleAdsFormatters.formatCost(campaign.campaign_budget?.amount_micros || 0)}
+                         </TableCell>
                     </TableRow>
                   ))
                   )}
@@ -560,52 +386,31 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
                         <div className="text-sm">TOTAIS</div>
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.formatImpressions(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0)
-                        )}
+                        {GoogleAdsFormatters.formatImpressions(aggregatedMetrics.totalImpressions)}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.formatImpressions(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-                        )}
+                        {GoogleAdsFormatters.formatImpressions(aggregatedMetrics.totalClicks)}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.calculateCTR(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0),
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.impressions || 0), 0)
-                        )}
+                        {aggregatedMetrics.averageCTR}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.formatCost(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0)
-                        )}
+                        {GoogleAdsFormatters.formatCost(aggregatedMetrics.totalCost)}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.calculateAvgCPC(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0),
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-                        )}
+                        {aggregatedMetrics.averageCPC}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.formatConversions(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0)
-                        )}
+                        {GoogleAdsFormatters.formatConversions(aggregatedMetrics.totalConversions)}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {(() => {
-                          const totalCost = sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.cost_micros || 0), 0);
-                          const totalConversions = sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0);
-                          return totalConversions > 0 ? formatGoogleAdsData.formatCost(totalCost / totalConversions) : 'R$ 0,00';
-                        })()}
+                        {aggregatedMetrics.averageCostPerConversion}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.calculateConversionRate(
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.conversions || 0), 0),
-                          sortedCampaigns.reduce((sum, campaign) => sum + (campaign.metrics?.clicks || 0), 0)
-                        )}
+                        {aggregatedMetrics.averageConversionRate}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
-                        {formatGoogleAdsData.formatCost(
+                        {GoogleAdsFormatters.formatCost(
                           sortedCampaigns.reduce((sum, campaign) => sum + (campaign.campaign_budget?.amount_micros || 0), 0)
                         )}
                       </TableCell>

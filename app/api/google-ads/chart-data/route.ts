@@ -1,49 +1,10 @@
 import { NextResponse } from 'next/server';
-import { GoogleAdsApi } from 'google-ads-api';
-
-// Cache para evitar múltiplas inicializações do cliente
-let googleAdsClient: GoogleAdsApi | null = null;
-
-// Função para inicializar o cliente Google Ads
-function initializeGoogleAdsClient() {
-  if (!googleAdsClient) {
-    // Validação das variáveis de ambiente
-    const requiredEnvVars = {
-      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-      GOOGLE_DEVELOPER_TOKEN: process.env.GOOGLE_DEVELOPER_TOKEN,
-      GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
-      GOOGLE_LOGIN_CUSTOMER_ID: process.env.GOOGLE_LOGIN_CUSTOMER_ID,
-    };
-
-    // Verifica se todas as variáveis estão presentes
-    const missingVars = Object.entries(requiredEnvVars)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingVars.length > 0) {
-      throw new Error(`Variáveis de ambiente ausentes: ${missingVars.join(', ')}`);
-    }
-
-    googleAdsClient = new GoogleAdsApi({
-      client_id: requiredEnvVars.GOOGLE_CLIENT_ID!,
-      client_secret: requiredEnvVars.GOOGLE_CLIENT_SECRET!,
-      developer_token: requiredEnvVars.GOOGLE_DEVELOPER_TOKEN!,
-    });
-  }
-
-  return googleAdsClient;
-}
+import { getGoogleAdsCustomer } from '@/lib/google-ads-client';
+import { chartDataQuerySchema, validateUrlParams, formatValidationErrors } from '@/lib/validation-schemas';
 
 // Função para obter dados segmentados por dia para o gráfico
 async function getChartData(customerId?: string, dateFrom?: string, dateTo?: string) {
-  const client = initializeGoogleAdsClient();
-  
-  const customer = client.Customer({
-    customer_id: customerId || process.env.GOOGLE_CUSTOMER_ID || 'ID_DA_CONTA_ALVO',
-    login_customer_id: process.env.GOOGLE_LOGIN_CUSTOMER_ID!,
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-  });
+  const customer = getGoogleAdsCustomer(customerId);
 
   try {
     let campaigns;
@@ -152,11 +113,27 @@ async function getChartData(customerId?: string, dateFrom?: string, dateTo?: str
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get('customerId');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
+    
+    // Validar parâmetros de entrada
+    let validatedParams;
+    try {
+      validatedParams = validateUrlParams(chartDataQuerySchema, searchParams);
+    } catch (error) {
+      if (error instanceof Error) {
+        return NextResponse.json(
+          { 
+            error: 'Parâmetros inválidos',
+            details: formatValidationErrors(error as any),
+            help: 'Verifique os parâmetros da requisição'
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
 
-    const data = await getChartData(customerId || undefined, dateFrom || undefined, dateTo || undefined);
+    const { customerId, dateFrom, dateTo } = validatedParams;
+    const data = await getChartData(customerId, dateFrom, dateTo);
 
     // Configuração de cache para Vercel
     const response = NextResponse.json({
@@ -194,6 +171,18 @@ export async function GET(request: Request) {
             details: 'Verifique suas credenciais do Google Ads'
           },
           { status: 401 }
+        );
+      }
+      
+      // Erro específico de query GAQL
+      if (error.message.includes('segments.date') || error.message.includes('GAQL')) {
+        return NextResponse.json(
+          { 
+            error: 'Erro na query do Google Ads',
+            details: 'O filtro de data pode não estar disponível para esta conta',
+            help: 'Tente remover o filtro de data ou verificar as permissões da conta'
+          },
+          { status: 400 }
         );
       }
     }

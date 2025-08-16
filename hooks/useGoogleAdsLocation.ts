@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 
 interface LocationData {
-  state: string;
-  state_id: string;
+  country: string;
+  region: string;
+  city: string;
   impressions: number;
   clicks: number;
   cost_micros: number;
   conversions: number;
-  data_points: number;
+  campaigns: string[];
+  campaign_count: number;
   ctr: number;
   cpc: number;
   conversion_rate: number;
@@ -17,7 +19,7 @@ interface LocationData {
 interface LocationResponse {
   success: boolean;
   data: LocationData[];
-  total_states: number;
+  total_locations: number;
   total_impressions: number;
   total_clicks: number;
   total_cost: number;
@@ -29,7 +31,7 @@ export function useGoogleAdsLocation(customerId?: string, dateFilter?: { from: D
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totals, setTotals] = useState({
-    total_states: 0,
+    total_locations: 0,
     total_impressions: 0,
     total_clicks: 0,
     total_cost: 0,
@@ -58,7 +60,7 @@ export function useGoogleAdsLocation(customerId?: string, dateFilter?: { from: D
       if (result.success) {
         setData(result.data);
         setTotals({
-          total_states: result.total_states,
+          total_locations: result.total_locations,
           total_impressions: result.total_impressions,
           total_clicks: result.total_clicks,
           total_cost: result.total_cost,

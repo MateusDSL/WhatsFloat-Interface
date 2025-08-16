@@ -348,13 +348,9 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
       </div>
 
       {/* Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-        <div className="lg:col-span-7">
-          <GoogleAdsChart customerId={customerId} dateFilter={dateFilter} />
-        </div>
-        <div className="lg:col-span-3">
-          <GoogleAdsLocationChart customerId={customerId} dateFilter={dateFilter} />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GoogleAdsChart customerId={customerId} dateFilter={dateFilter} />
+        <GoogleAdsLocationChart customerId={customerId} dateFilter={dateFilter} />
       </div>
 
       {/* Campanhas Table */}

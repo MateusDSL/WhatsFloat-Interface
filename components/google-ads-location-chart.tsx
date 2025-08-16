@@ -66,13 +66,58 @@ export function GoogleAdsLocationChart({ customerId, dateFilter }: GoogleAdsLoca
   const chartData = useMemo(() => {
     if (!data.length) return [];
 
-    // Ordenar dados por conversões e pegar top 10
-    const sortedData = [...data]
+    // Agrupar dados por estado
+    const stateData = new Map<string, {
+      state: string;
+      conversions: number;
+      cost_micros: number;
+      impressions: number;
+      clicks: number;
+      locations: number;
+    }>();
+
+    data.forEach((location) => {
+      // Tentar extrair estado da região ou cidade
+      let state = 'Outros';
+      
+      if (location.region && regionToState[location.region]) {
+        state = regionToState[location.region];
+      } else if (location.city) {
+        // Tentar extrair estado da cidade (últimas 2 letras)
+        const cityParts = location.city.split(' - ');
+        if (cityParts.length > 1) {
+          const possibleState = cityParts[cityParts.length - 1].trim();
+          if (possibleState.length === 2 && /^[A-Z]{2}$/.test(possibleState)) {
+            state = possibleState;
+          }
+        }
+      }
+
+      const current = stateData.get(state) || {
+        state,
+        conversions: 0,
+        cost_micros: 0,
+        impressions: 0,
+        clicks: 0,
+        locations: 0
+      };
+
+      current.conversions += location.conversions;
+      current.cost_micros += location.cost_micros;
+      current.impressions += location.impressions;
+      current.clicks += location.clicks;
+      current.locations += 1;
+
+      stateData.set(state, current);
+    });
+
+    // Converter para array e ordenar por conversões
+    const sortedData = Array.from(stateData.values())
       .sort((a, b) => b.conversions - a.conversions)
-      .slice(0, 10);
+      .slice(0, 10); // Top 10 estados
 
     // Calcular total dos outros estados
-    const otherStatesTotal = data
+    const otherStatesTotal = Array.from(stateData.values())
       .slice(10)
       .reduce((sum, item) => sum + item.conversions, 0);
 
@@ -84,7 +129,7 @@ export function GoogleAdsLocationChart({ customerId, dateFilter }: GoogleAdsLoca
       cost: item.cost_micros,
       impressions: item.impressions,
       clicks: item.clicks,
-      data_points: item.data_points
+      locations: item.locations
     }));
 
     // Adicionar "Outros" se houver dados
@@ -96,7 +141,7 @@ export function GoogleAdsLocationChart({ customerId, dateFilter }: GoogleAdsLoca
         cost: 0,
         impressions: 0,
         clicks: 0,
-        data_points: 0
+        locations: 0
       });
     }
 
@@ -178,17 +223,35 @@ export function GoogleAdsLocationChart({ customerId, dateFilter }: GoogleAdsLoca
 
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
-             <CardHeader>
-         <div>
-           <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-             <MapPin className="w-5 h-5 text-blue-600" />
-             Conversões por Estado
-           </CardTitle>
-           <CardDescription className="text-gray-600 mt-1">
-             Estados com maior volume de conversões • Total: {formatLocationData.formatNumber(totalConversions)} conversões
-           </CardDescription>
-         </div>
-       </CardHeader>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-blue-600" />
+              Conversões por Estado
+            </CardTitle>
+                         <CardDescription className="text-gray-600 mt-1">
+               Estados com maior volume de conversões • Total: {formatLocationData.formatNumber(totalConversions)} conversões
+             </CardDescription>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-600">
+                  {formatLocationData.formatNumber(totals.total_conversions)}
+                </div>
+                <div className="text-xs text-gray-500">Total Conversões</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-green-600">
+                  {formatLocationData.formatCost(totals.total_cost)}
+                </div>
+                <div className="text-xs text-gray-500">Total Investido</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
       <CardContent>
         {loading ? (
           <PieChartSkeleton />

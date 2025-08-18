@@ -10,7 +10,7 @@ export default function GoogleAdsPage() {
       <div className="flex h-screen bg-gray-50/50 overflow-hidden">
         <SidebarWrapper />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <GoogleAdsDashboard />
+          <GoogleAdsDashboard customerId={process.env.NEXT_PUBLIC_GOOGLE_CUSTOMER_ID} />
         </div>
       </div>
     </AuthGuard>

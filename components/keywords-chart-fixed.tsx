@@ -103,34 +103,19 @@ export function KeywordsChartFixed({ customerId, dateFilter: propDateFilter }: K
               <TableHeader>
                 <TableRow>
                   <TableHead>Palavra-chave</TableHead>
-                  <TableHead>Tipo</TableHead>
                   <TableHead>Campanha</TableHead>
                   <TableHead className="text-center">Impressões</TableHead>
                   <TableHead className="text-center">Cliques</TableHead>
                   <TableHead className="text-center">CTR</TableHead>
                   <TableHead className="text-center">Custo</TableHead>
                   <TableHead className="text-center">Conversões</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {topKeywords.map((keyword: any, index: number) => (
                   <TableRow key={`keyword-${index}`}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <span>{keyword.keyword}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {keyword.matchType}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={keyword.matchType === 'EXACT' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {keyword.matchType}
-                      </Badge>
+                      {keyword.keyword}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
                       {keyword.campaignName}
@@ -153,14 +138,6 @@ export function KeywordsChartFixed({ customerId, dateFilter: propDateFilter }: K
                       <span className="text-blue-600 font-medium">
                         {Number(keyword.conversions || 0).toFixed(2)}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge 
-                        variant={keyword.status === 'ENABLED' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {keyword.status}
-                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

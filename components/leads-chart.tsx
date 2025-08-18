@@ -62,8 +62,17 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
   }, [leads, dateFilter])
 
   const totalLeads = chartData.reduce((sum, day) => sum + day.leads, 0)
-  const averageLeads = totalLeads > 0 ? (totalLeads / chartData.length).toFixed(1) : "0"
-  const maxLeads = Math.max(...chartData.map(day => day.leads))
+  
+  // Calcular estatísticas apenas para dias úteis (segunda a sexta)
+  const workingDaysData = chartData.filter(day => {
+    const dayOfWeek = day.originalDate.getDay() // 0 = Domingo, 6 = Sábado
+    return dayOfWeek >= 1 && dayOfWeek <= 5 // Segunda = 1, Terça = 2, ..., Sexta = 5
+  })
+  
+  const workingDaysCount = workingDaysData.length
+  const totalLeadsWorkingDays = workingDaysData.reduce((sum, day) => sum + day.leads, 0)
+  const averageLeads = workingDaysCount > 0 ? (totalLeadsWorkingDays / workingDaysCount).toFixed(1) : "0"
+  const maxLeads = workingDaysCount > 0 ? Math.max(...workingDaysData.map(day => day.leads)) : 0
   const today = new Date()
   const isToday = (date: Date) => format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
 
@@ -145,7 +154,7 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
               Leads por Dia
             </CardTitle>
             <CardDescription className="text-gray-600 mt-1">
-              Distribuição diária de leads no período selecionado
+              Distribuição diária de leads • Estatísticas baseadas em dias úteis
             </CardDescription>
           </div>
           <div className="text-right">
@@ -165,7 +174,7 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
         <div className="flex items-center gap-4 mt-4 p-3 bg-green-50/50 rounded-lg border border-green-100">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-            <span className="text-sm font-medium text-gray-700">Média diária:</span>
+            <span className="text-sm font-medium text-gray-700">Média diária (dias úteis):</span>
             {loading ? (
               <Skeleton className="w-12 h-4" />
             ) : (
@@ -174,7 +183,7 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-            <span className="text-sm font-medium text-gray-700">Pico:</span>
+            <span className="text-sm font-medium text-gray-700">Pico (dias úteis):</span>
             {loading ? (
               <Skeleton className="w-12 h-4" />
             ) : (

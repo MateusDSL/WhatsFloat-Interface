@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Home,
   LogOut,
+  Sparkles,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -75,6 +76,12 @@ const menuItems = [
     icon: TrendingUp,
     href: "/analytics",
     badge: null,
+  },
+  {
+    title: "Insights (IA)",
+    icon: Sparkles,
+    href: "/insights",
+    badge: "Beta",
   },
 ]
 

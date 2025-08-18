@@ -160,9 +160,6 @@ const TableRowSkeleton = () => (
       <Skeleton className="h-4 w-20" />
     </TableCell>
     <TableCell>
-      <Skeleton className="h-4 w-16" />
-    </TableCell>
-    <TableCell>
       <Skeleton className="h-6 w-12" />
     </TableCell>
   </TableRow>
@@ -174,7 +171,7 @@ const mapLeadToDisplay = (lead: Lead) => ({
   name: lead.name,
   email: lead.phone, // Usando phone como email temporariamente
   phone: lead.phone,
-  campaign: lead.utm_campaign,
+  campaign: lead.nome_campanha_formatado || 'Não Rastreada', // Usar apenas nome_campanha_formatado
   utm_term: lead.utm_term,
   utm_medium: lead.utm_medium,
   beacon: Boolean(lead.is_becon), // Garantir que seja sempre boolean
@@ -188,6 +185,7 @@ export default function LeadsPage() {
   const { leads, loading, error, updateLead, deleteLead, deleteMultipleLeads, verifyAndUpdateBecon } = useLeads()
   const [searchTerm, setSearchTerm] = useState("")
   const [sourceFilter, setSourceFilter] = useState("todos")
+  const [campaignFilter, setCampaignFilter] = useState("todos")
 
   const [selectedLeads, setSelectedLeads] = useState<number[]>([])
   const [dateFilter, setDateFilter] = useState<{
@@ -204,7 +202,7 @@ export default function LeadsPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, sourceFilter, dateFilter])
+  }, [searchTerm, sourceFilter, campaignFilter, dateFilter])
 
   // Mapear leads do Supabase para o formato da interface
   const mappedLeads = useMemo(() => {
@@ -231,8 +229,34 @@ export default function LeadsPage() {
     return options
   }
 
+  // Gerar opções de filtro de campanha formatada
+  const getCampaignFilterOptions = () => {
+    // Filtrar apenas campanhas que têm formatação (contêm colchetes)
+    const formattedCampaigns = leads
+      .map(lead => lead.nome_campanha_formatado)
+      .filter(campaign => campaign && campaign.includes('['))
+    
+    const uniqueCampaigns = [...new Set(formattedCampaigns)]
+    const options = [
+      { value: "todos", label: "Todas as Campanhas" },
+      ...uniqueCampaigns.map(campaign => ({
+        value: campaign,
+        label: campaign
+      }))
+    ]
+    
+    // Adicionar "Não Rastreada" se houver leads sem campanha formatada
+    const hasUntrackedLeads = leads.some(lead => !lead.nome_campanha_formatado || !lead.nome_campanha_formatado.includes('['))
+    if (hasUntrackedLeads) {
+      options.push({ value: "nao-rastreada", label: "Não Rastreada" })
+    }
+    
+    return options
+  }
+
   // Filter leads based on search and filters
-  const filteredLeads = mappedLeads.filter((lead) => {
+  const filteredLeads = mappedLeads.filter((lead, index) => {
+    const originalLead = leads[index] // Acessar o lead original do Supabase
     const matchesSearch =
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -243,13 +267,16 @@ export default function LeadsPage() {
     const matchesSource = sourceFilter === "todos" || 
                          (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
                          (lead.source && lead.source === sourceFilter)
+    const matchesCampaign = campaignFilter === "todos" || 
+                           (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
 
     // Date filter
     const leadDate = new Date(lead.createdAt)
     const matchesDate =
       (!dateFilter.from || leadDate >= dateFilter.from) && (!dateFilter.to || leadDate <= dateFilter.to)
 
-    return matchesSearch && matchesSource && matchesDate
+    return matchesSearch && matchesSource && matchesCampaign && matchesDate
   })
 
   // Pagination logic
@@ -259,7 +286,8 @@ export default function LeadsPage() {
   const currentLeads = filteredLeads.slice(startIndex, endIndex)
 
   // Calculate statistics based on filtered data (including source filter)
-  const filteredLeadsForStats = mappedLeads.filter((lead) => {
+  const filteredLeadsForStats = mappedLeads.filter((lead, index) => {
+    const originalLead = leads[index] // Acessar o lead original do Supabase
     const leadDate = new Date(lead.createdAt)
     const matchesDate =
       (!dateFilter.from || leadDate >= dateFilter.from) && (!dateFilter.to || leadDate <= dateFilter.to)
@@ -269,7 +297,12 @@ export default function LeadsPage() {
                          (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
                          (lead.source && lead.source === sourceFilter)
     
-    return matchesDate && matchesSource
+    // Apply campaign filter to statistics
+    const matchesCampaign = campaignFilter === "todos" || 
+                           (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
+    
+    return matchesDate && matchesSource && matchesCampaign
   })
 
   // Calcular estatísticas do período anterior para comparação
@@ -291,18 +324,24 @@ export default function LeadsPage() {
     const previousPeriodEnd = subDays(dateFilter.from, 1)
     const previousPeriodStart = subDays(previousPeriodEnd, currentPeriodDays - 1)
     
-    // Filtrar leads do período anterior (incluindo filtro de origem)
-    const previousPeriodLeads = mappedLeads.filter((lead) => {
-      const leadDate = new Date(lead.createdAt)
-      const matchesDate = leadDate >= startOfDay(previousPeriodStart) && leadDate <= endOfDay(previousPeriodEnd)
-      
-      // Apply source filter to previous period as well
-      const matchesSource = sourceFilter === "todos" || 
-                           (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
-                           (lead.source && lead.source === sourceFilter)
-      
-      return matchesDate && matchesSource
-    })
+          // Filtrar leads do período anterior (incluindo filtro de origem)
+      const previousPeriodLeads = mappedLeads.filter((lead, index) => {
+        const originalLead = leads[index] // Acessar o lead original do Supabase
+        const leadDate = new Date(lead.createdAt)
+        const matchesDate = leadDate >= startOfDay(previousPeriodStart) && leadDate <= endOfDay(previousPeriodEnd)
+        
+        // Apply source filter to previous period as well
+        const matchesSource = sourceFilter === "todos" || 
+                             (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
+                             (lead.source && lead.source === sourceFilter)
+        
+        // Apply campaign filter to previous period as well
+        const matchesCampaign = campaignFilter === "todos" || 
+                               (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                               (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
+        
+        return matchesDate && matchesSource && matchesCampaign
+      })
     
     const previousTotalLeads = previousPeriodLeads.length
     const previousBeaconLeads = previousPeriodLeads.filter((lead) => lead.beacon).length
@@ -343,7 +382,7 @@ export default function LeadsPage() {
       untrackedPercentageChange: calculatePercentageChange(currentUntrackedLeads, previousUntrackedLeads),
       hasComparison: true
     }
-  }, [dateFilter, sourceFilter, mappedLeads, filteredLeadsForStats])
+  }, [dateFilter, sourceFilter, campaignFilter, mappedLeads, filteredLeadsForStats])
 
   // Função auxiliar para formatar mensagem de comparação
   const formatComparisonMessage = (percentageChange: number | undefined, hasComparison: boolean) => {
@@ -643,6 +682,7 @@ export default function LeadsPage() {
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
                   <Skeleton className="h-10 flex-1" />
                   <Skeleton className="h-10 w-[180px]" />
+                  <Skeleton className="h-10 w-[200px]" />
                   <Skeleton className="h-10 w-[180px]" />
                 </div>
               ) : (
@@ -650,7 +690,7 @@ export default function LeadsPage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Buscar por nome, telefone, campanha ou origem..."
+                      placeholder="Buscar por nome, telefone, campanha formatada ou origem..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                                              className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200"
@@ -662,6 +702,18 @@ export default function LeadsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {getSourceFilterOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                    <SelectTrigger className="w-full sm:w-[200px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
+                      <SelectValue placeholder="Campanha" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCampaignFilterOptions().map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -738,8 +790,7 @@ export default function LeadsPage() {
                         <TableHead className="w-48">Nome</TableHead>
                         <TableHead className="w-40">Telefone / Estado</TableHead>
                                                                           <TableHead className="w-24">Origem</TableHead>
-                         <TableHead className="w-28">Medium</TableHead>
-                         <TableHead className="w-32">Campanha</TableHead>
+                         <TableHead className="w-28">Campanha</TableHead>
                          <TableHead className="w-28">Termo</TableHead>
                                                    <TableHead className="w-20">Becon</TableHead>
                       </TableRow>
@@ -783,9 +834,6 @@ export default function LeadsPage() {
                            </div>
                          </TableCell>
                          <TableCell className="w-28">
-                           <div className="text-sm text-gray-600">{lead.utm_medium || 'N/A'}</div>
-                         </TableCell>
-                         <TableCell className="w-32">
                            <div className="text-sm">{lead.campaign || 'Não Rastreada'}</div>
                          </TableCell>
                          <TableCell className="w-28">

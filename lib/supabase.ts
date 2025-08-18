@@ -35,4 +35,5 @@ export interface Lead {
   comment: string
   is_becon: boolean
   status: string
+  nome_campanha_formatado: string
 }

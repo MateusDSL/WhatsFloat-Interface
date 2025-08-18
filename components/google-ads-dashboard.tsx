@@ -22,7 +22,6 @@ interface GoogleAdsDashboardProps {
 
 export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDashboardProps) {
   const [activeTab, setActiveTab] = useState('campaigns');
-  const [inputCustomerId, setInputCustomerId] = useState('');
 
   // Get customerId from prop or environment variable
   const customerId = propCustomerId || process.env.NEXT_PUBLIC_GOOGLE_CUSTOMER_ID;
@@ -76,58 +75,7 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
     </TableRow>
   );
 
-  // Configuration section when customerId is not available
-  if (!customerId) {
-    return (
-      <div className="flex-1 p-4 space-y-4 overflow-auto">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-600" />
-              Configuração do Google Ads
-            </CardTitle>
-            <CardDescription>
-              Configure seu Customer ID do Google Ads para acessar os dados das campanhas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="customerId" className="text-sm font-medium text-gray-700">
-                Google Ads Customer ID
-              </label>
-              <Input
-                id="customerId"
-                type="text"
-                placeholder="Ex: 1234567890"
-                value={inputCustomerId}
-                onChange={(e) => setInputCustomerId(e.target.value)}
-                className="max-w-md"
-              />
-              <p className="text-xs text-gray-500">
-                Encontre seu Customer ID no Google Ads Manager Account
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => {
-                  if (inputCustomerId) {
-                    // For now, just show an alert. In a real app, you'd save this to settings
-                    alert(`Customer ID configurado: ${inputCustomerId}\n\nPara persistir esta configuração, adicione NEXT_PUBLIC_GOOGLE_CUSTOMER_ID=${inputCustomerId} ao seu arquivo .env.local`);
-                  }
-                }}
-                disabled={!inputCustomerId}
-              >
-                Configurar
-              </Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Recarregar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="flex-1 p-4 space-y-4 overflow-auto">

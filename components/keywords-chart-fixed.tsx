@@ -1,27 +1,46 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGoogleAdsKeywords } from '../hooks/useGoogleAds';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Search, TrendingUp, Target, Star, BarChart3 } from 'lucide-react';
+import { GoogleAdsDateFilter } from './google-ads-date-filter';
 
 interface KeywordsChartProps {
   customerId?: string;
   dateFilter?: { from: string; to: string };
 }
 
-export function KeywordsChartFixed({ customerId, dateFilter }: KeywordsChartProps) {
+export function KeywordsChartFixed({ customerId, dateFilter: propDateFilter }: KeywordsChartProps) {
+  const [dateFilter, setDateFilter] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
+    // Configurar filtro padrão para últimos 7 dias
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    const from = new Date(sevenDaysAgo);
+    from.setHours(0, 0, 0, 0);
+    
+    const to = new Date(today);
+    to.setHours(23, 59, 59, 999);
+    
+    return { from, to };
+  });
+
   const { keywordsData, campaignsData, topKeywords, totals, loading, error, fetchKeywordsData } = useGoogleAdsKeywords();
 
   useEffect(() => {
     if (customerId) {
+      const dateFrom = dateFilter.from ? dateFilter.from.toISOString().split('T')[0] : undefined;
+      const dateTo = dateFilter.to ? dateFilter.to.toISOString().split('T')[0] : undefined;
+      
       fetchKeywordsData(
         customerId,
-        dateFilter?.from,
-        dateFilter?.to
+        dateFrom,
+        dateTo
       );
     }
   }, [customerId, dateFilter, fetchKeywordsData]);
@@ -71,6 +90,14 @@ export function KeywordsChartFixed({ customerId, dateFilter }: KeywordsChartProp
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Filtro de Data */}
+          <div className="flex justify-end mb-6">
+            <GoogleAdsDateFilter 
+              value={dateFilter} 
+              onChange={setDateFilter}
+              customerId={customerId}
+            />
+          </div>
           {topKeywords && topKeywords.length > 0 ? (
             <Table>
               <TableHeader>

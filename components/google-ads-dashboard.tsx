@@ -452,10 +452,6 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                  <TabsContent value="keywords" className="mt-6">
            <KeywordsChartFixed
              customerId={customerId}
-             dateFilter={dateFilter ? {
-               from: dateFilter.from?.toISOString().split('T')[0] || '',
-               to: dateFilter.to?.toISOString().split('T')[0] || ''
-             } : undefined}
            />
          </TabsContent>
 

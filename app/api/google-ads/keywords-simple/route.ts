@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customerId');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
 
     if (!customerId) {
       return NextResponse.json({ error: 'Customer ID é obrigatório' }, { status: 400 });
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
     const customer = getGoogleAdsCustomer(customerId);
 
     // Query simples para buscar dados de keywords
-    const query = `
+    let query = `
       SELECT
         campaign.id,
         campaign.name,
@@ -24,6 +26,7 @@ export async function GET(request: NextRequest) {
         ad_group_criterion.keyword.text,
         ad_group_criterion.keyword.match_type,
         ad_group_criterion.status,
+        segments.date,
         metrics.impressions,
         metrics.clicks,
         metrics.cost_micros,
@@ -36,6 +39,16 @@ export async function GET(request: NextRequest) {
       WHERE campaign.status = 'ENABLED'
         AND ad_group.status = 'ENABLED'
         AND ad_group_criterion.keyword.text IS NOT NULL
+    `;
+
+    // Adicionar filtros de data se fornecidos
+    if (dateFrom && dateTo) {
+      query += `
+        AND segments.date BETWEEN '${dateFrom}' AND '${dateTo}'
+      `;
+    }
+
+    query += `
       ORDER BY metrics.cost_micros DESC
       LIMIT 100
     `;

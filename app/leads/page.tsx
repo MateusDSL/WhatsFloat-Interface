@@ -792,24 +792,14 @@ export default function LeadsPage() {
                            <div className="text-sm text-gray-600">{lead.utm_term || 'N/A'}</div>
                          </TableCell>
                             <TableCell className="w-20">
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  className={`cursor-pointer ${lead.beacon ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"}`}
-                                  onClick={() => {
-                                    lead.id && toggleBeacon(lead.id)
-                                  }}
-                                >
-                                  {lead.beacon ? "Sim" : "Não"}
-                                </Badge>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => lead.id && verifyAndUpdateBecon(lead.id)}
-                                >
-                                  <Search className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              <Badge
+                                className={`cursor-pointer ${lead.beacon ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"}`}
+                                onClick={() => {
+                                  lead.id && toggleBeacon(lead.id)
+                                }}
+                              >
+                                {lead.beacon ? "Sim" : "Não"}
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))

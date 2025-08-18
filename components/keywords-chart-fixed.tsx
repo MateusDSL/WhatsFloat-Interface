@@ -147,49 +147,7 @@ export function KeywordsChartFixed({ customerId, dateFilter }: KeywordsChartProp
         </CardContent>
       </Card>
 
-      {/* Performance por Campanha */}
-      {campaignsData && campaignsData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-              Performance por Campanha
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {campaignsData.map((campaign: any, index: number) => (
-                <div key={`campaign-${index}`} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-sm truncate">{campaign.campaignName}</h4>
-                    <Badge variant="outline" className="text-xs">
-                      {campaign.keywords ? campaign.keywords.length : 0} keywords
-                    </Badge>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Impressões:</span>
-                      <span className="font-medium">{Number(campaign.totalImpressions || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Cliques:</span>
-                      <span className="font-medium">{Number(campaign.totalClicks || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Custo:</span>
-                      <span className="font-medium">R$ {Number(campaign.totalCost || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Conversões:</span>
-                      <span className="font-medium text-blue-600">{Number(campaign.totalConversions || 0).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
 
 

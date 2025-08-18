@@ -74,7 +74,7 @@ export const campaignsQuerySchema = z.object({
   customerId: customerIdSchema,
   dateFrom: dateSchema.optional(),
   dateTo: dateSchema.optional(),
-  type: z.literal('campaigns').optional(),
+  type: z.enum(['campaigns', 'ads', 'keywords']).optional(),
 }).refine((data) => {
   // Se dateFrom está presente, dateTo também deve estar
   if (data.dateFrom && !data.dateTo) {
@@ -196,6 +196,72 @@ export const devicesQuerySchema = z.object({
   message: 'Data inicial deve ser menor ou igual à data final',
   path: ['dateTo']
 });
+
+// Schema para validação de parâmetros de localização
+export const locationQuerySchema = z.object({
+  customerId: customerIdSchema,
+  dateFrom: dateSchema.optional(),
+  dateTo: dateSchema.optional(),
+  type: z.literal('location').optional(),
+}).refine((data) => {
+  // Se dateFrom está presente, dateTo também deve estar
+  if (data.dateFrom && !data.dateTo) {
+    return false;
+  }
+  // Se dateTo está presente, dateFrom também deve estar
+  if (data.dateTo && !data.dateFrom) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Ambas as datas (dateFrom e dateTo) devem ser fornecidas juntas',
+  path: ['dateFrom']
+}).refine((data) => {
+  // Se ambas as datas estão presentes, validar o intervalo
+  if (data.dateFrom && data.dateTo) {
+    const fromDate = new Date(data.dateFrom);
+    const toDate = new Date(data.dateTo);
+    return fromDate <= toDate;
+  }
+  return true;
+}, {
+  message: 'Data inicial deve ser menor ou igual à data final',
+  path: ['dateTo']
+});
+
+// Schema para validação de parâmetros de palavras-chave
+export const keywordsQuerySchema = z.object({
+  customerId: customerIdSchema,
+  dateFrom: dateSchema.optional(),
+  dateTo: dateSchema.optional(),
+  type: z.literal('keywords').optional(),
+}).refine((data) => {
+  // Se dateFrom está presente, dateTo também deve estar
+  if (data.dateFrom && !data.dateTo) {
+    return false;
+  }
+  // Se dateTo está presente, dateFrom também deve estar
+  if (data.dateTo && !data.dateFrom) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Ambas as datas (dateFrom e dateTo) devem ser fornecidas juntas',
+  path: ['dateFrom']
+}).refine((data) => {
+  // Se ambas as datas estão presentes, validar o intervalo
+  if (data.dateFrom && data.dateTo) {
+    const fromDate = new Date(data.dateFrom);
+    const toDate = new Date(data.dateTo);
+    return fromDate <= toDate;
+  }
+  return true;
+}, {
+  message: 'Data inicial deve ser menor ou igual à data final',
+  path: ['dateTo']
+});
+
+
 
 
 

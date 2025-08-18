@@ -3,9 +3,10 @@
 import { SidebarWrapper } from "@/components/sidebar-wrapper"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Target, BarChart3, FileText, ArrowRight } from "lucide-react"
+import { Users, Target, BarChart3, FileText, ArrowRight, Database } from "lucide-react"
 import Link from "next/link"
 import { AuthGuard } from "@/components/auth-guard"
+
 
 export default function DashboardPage() {
   return (
@@ -93,10 +94,12 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </Link>
+
+
           </div>
 
           {/* Additional Features */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -142,6 +145,8 @@ export default function DashboardPage() {
                 </Link>
               </CardContent>
             </Card>
+
+
           </div>
         </div>
       </div>

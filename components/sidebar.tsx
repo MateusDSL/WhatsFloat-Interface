@@ -63,6 +63,7 @@ const menuItems = [
     href: "/meta-ads",
     badge: null,
   },
+
   {
     title: "Relatórios",
     icon: BarChart3,

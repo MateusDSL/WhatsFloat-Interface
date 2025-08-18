@@ -156,19 +156,7 @@ export function useGoogleAdsAds() {
   };
 }
 
-// Hook para dados específicos de palavras-chave
-export function useGoogleAdsKeywords() {
-  const { data, loading, error, fetchKeywords, clearError } = useGoogleAds();
 
-  return {
-    keywords: data?.data || [],
-    loading,
-    error,
-    fetchKeywords,
-    clearError,
-    lastUpdated: data?.timestamp
-  };
-}
 
 // Hook para dados específicos do gráfico (segmentados por dia)
 export function useGoogleAdsChartData() {
@@ -221,6 +209,122 @@ export function useGoogleAdsChartData() {
     loading,
     error,
     fetchChartData,
+    clearError,
+    lastUpdated: data?.timestamp
+  };
+}
+
+// Hook para dados específicos de localização geográfica
+export function useGoogleAdsLocation() {
+  const [data, setData] = useState<GoogleAdsData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<GoogleAdsError | null>(null);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const fetchLocationData = useCallback(async (customerId?: string, dateFrom?: string, dateTo?: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (customerId) {
+        params.append('customerId', customerId);
+      }
+      if (dateFrom) {
+        params.append('dateFrom', dateFrom);
+      }
+      if (dateTo) {
+        params.append('dateTo', dateTo);
+      }
+
+      const response = await fetch(`/api/google-ads/location?${params}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro na requisição');
+      }
+
+      setData(result);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError({
+        error: errorMessage,
+        details: 'Falha ao buscar dados de localização',
+        help: 'Verifique as credenciais e tente novamente'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    locationData: data?.data || [],
+    totals: data?.totals || {},
+    loading,
+    error,
+    fetchLocationData,
+    clearError,
+    lastUpdated: data?.timestamp
+  };
+}
+
+// Hook para dados específicos de palavras-chave
+export function useGoogleAdsKeywords() {
+  const [data, setData] = useState<GoogleAdsData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<GoogleAdsError | null>(null);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const fetchKeywordsData = useCallback(async (customerId?: string, dateFrom?: string, dateTo?: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (customerId) {
+        params.append('customerId', customerId);
+      }
+      if (dateFrom) {
+        params.append('dateFrom', dateFrom);
+      }
+      if (dateTo) {
+        params.append('dateTo', dateTo);
+      }
+
+      const response = await fetch(`/api/google-ads/keywords-simple?${params}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro na requisição');
+      }
+
+      setData(result);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError({
+        error: errorMessage,
+        details: 'Falha ao buscar dados de palavras-chave',
+        help: 'Verifique as credenciais e tente novamente'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    keywordsData: data?.data?.keywords || [],
+    campaignsData: data?.data?.campaigns || [],
+    topKeywords: data?.data?.topKeywords || [],
+    totals: data?.totals || {},
+    loading,
+    error,
+    fetchKeywordsData,
     clearError,
     lastUpdated: data?.timestamp
   };

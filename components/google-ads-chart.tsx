@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Skeleton } from './ui/skeleton';
 import { TrendingUp, DollarSign, Target } from 'lucide-react';
 import { formatGoogleAdsData } from '@/hooks/useGoogleAds';
+import { GoogleAdsStatesChart } from './google-ads-states-chart';
 
 // Função utilitária para formatar datas no fuso horário do Brasil
 const formatDateToBrazil = (dateString: string) => {
@@ -231,121 +232,129 @@ export function GoogleAdsChart({ customerId, dateFilter }: GoogleAdsChartProps) 
   }
 
   return (
-    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Investimento vs Conversões
-            </CardTitle>
-            <CardDescription className="text-gray-600 mt-1">
-              Evolução diária do investimento e conversões
-              {!chartData.some(item => item.segments?.date) && (
-                <span className="ml-2 text-orange-600 text-xs">
-                  (Dados distribuídos uniformemente)
-                </span>
-              )}
-            </CardDescription>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-lg font-bold text-green-600">
-                  {formatGoogleAdsData.formatCost(totals.investment * 1000000)}
+    <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+      {/* Chart de Investimento x Conversões */}
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 lg:col-span-7">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                Investimento vs Conversões
+              </CardTitle>
+              <CardDescription className="text-gray-600 mt-1">
+                Evolução diária do investimento e conversões
+                {!chartData.some(item => item.segments?.date) && (
+                  <span className="ml-2 text-orange-600 text-xs">
+                    (Dados distribuídos uniformemente)
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-600">
+                    {formatGoogleAdsData.formatCost(totals.investment * 1000000)}
+                  </div>
+                  <div className="text-xs text-gray-500">Total Investido</div>
                 </div>
-                <div className="text-xs text-gray-500">Total Investido</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-blue-600">
-                  {totals.conversions.toFixed(2)}
+                <div className="text-center">
+                  <div className="text-lg font-bold text-blue-600">
+                    {totals.conversions.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-500">Total Conversões</div>
                 </div>
-                <div className="text-xs text-gray-500">Total Conversões</div>
               </div>
             </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {processedChartData.length > 0 ? (
-          <div className="h-96">
-                         <ResponsiveContainer width="100%" height="100%">
-               <AreaChart data={processedChartData}>
-                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                 <XAxis 
-                   dataKey="formattedDate" 
-                   stroke="#6b7280"
-                   fontSize={14}
-                   tickLine={false}
-                   axisLine={false}
-                   padding={{ left: 20, right: 20 }}
-                 />
-                 <YAxis 
-                   yAxisId="left"
-                   stroke="#6b7280"
-                   fontSize={14}
-                   tickLine={false}
-                   axisLine={false}
-                   tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
-                   padding={{ top: 20, bottom: 20 }}
-                 />
-                 <YAxis 
-                   yAxisId="right"
-                   orientation="right"
-                   stroke="#6b7280"
-                   fontSize={14}
-                   tickLine={false}
-                   axisLine={false}
-                   tickFormatter={(value) => value.toFixed(1)}
-                   padding={{ top: 20, bottom: 20 }}
-                 />
-                 <Tooltip content={<CustomTooltip />} />
-                 <Legend 
-                   verticalAlign="top" 
-                   height={48}
-                   iconType="line"
-                   wrapperStyle={{ paddingBottom: '15px' }}
-                   iconSize={16}
-                 />
-                 <Area
-                   yAxisId="left"
-                   type="monotone"
-                   dataKey="investment"
-                   name="Investimento"
-                   stroke="#10b981"
-                   strokeWidth={4}
-                   fill="#10b981"
-                   fillOpacity={0.3}
-                   dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
-                   activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 3 }}
-                 />
-                 <Area
-                   yAxisId="right"
-                   type="monotone"
-                   dataKey="conversions"
-                   name="Conversões"
-                   stroke="#3b82f6"
-                   strokeWidth={4}
-                   fill="#3b82f6"
-                   fillOpacity={0.3}
-                   dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
-                   activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 3 }}
-                 />
-               </AreaChart>
-             </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-96 text-center">
-            <div className="p-4 bg-gray-100 rounded-full mb-4">
-              <TrendingUp className="w-8 h-8 text-gray-400" />
+        </CardHeader>
+        <CardContent>
+          {processedChartData.length > 0 ? (
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={processedChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="formattedDate" 
+                    stroke="#6b7280"
+                    fontSize={14}
+                    tickLine={false}
+                    axisLine={false}
+                    padding={{ left: 20, right: 20 }}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    stroke="#6b7280"
+                    fontSize={14}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
+                    padding={{ top: 20, bottom: 20 }}
+                  />
+                  <YAxis 
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#6b7280"
+                    fontSize={14}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => value.toFixed(1)}
+                    padding={{ top: 20, bottom: 20 }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={48}
+                    iconType="line"
+                    wrapperStyle={{ paddingBottom: '15px' }}
+                    iconSize={16}
+                  />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="investment"
+                    name="Investimento"
+                    stroke="#10b981"
+                    strokeWidth={4}
+                    fill="#10b981"
+                    fillOpacity={0.3}
+                    dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 3 }}
+                  />
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="conversions"
+                    name="Conversões"
+                    stroke="#3b82f6"
+                    strokeWidth={4}
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                    dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 3 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Nenhum dado disponível</h3>
-            <p className="text-gray-500 max-w-md">
-              Não há dados de investimento e conversões para o período selecionado.
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+              <div className="p-4 bg-gray-100 rounded-full mb-4">
+                <TrendingUp className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Nenhum dado disponível</h3>
+              <p className="text-gray-500 max-w-md">
+                Não há dados de investimento e conversões para o período selecionado.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chart de Conversões por Estado */}
+      <div className="lg:col-span-3">
+        <GoogleAdsStatesChart customerId={customerId} dateFilter={dateFilter} />
+      </div>
+    </div>
   );
 }

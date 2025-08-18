@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, Lead } from '@/lib/supabase'
 import { useSettings } from '@/hooks/useSettings'
+import { useToast } from '@/hooks/use-toast'
 
 export function useLeads() {
   const { settings } = useSettings()
+  const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -159,6 +161,54 @@ export function useLeads() {
     }
   }
 
+  // Nova função para verificar e atualizar o Becon de um lead
+  const verifyAndUpdateBecon = async (leadId: number) => {
+    try {
+      const lead = leads.find(l => l.id === leadId);
+      if (!lead || !lead.phone) {
+        throw new Error('Lead ou número de telefone não encontrado.');
+      }
+
+      // 1. Chamar sua nova API route
+      const response = await fetch('/api/becon/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone: lead.phone }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Falha ao verificar o Becon.');
+      }
+
+      // 2. Chamar a função updateLead para salvar o resultado no Supabase
+      const updatedLead = await updateLead(leadId, { is_becon: result.isRegistered });
+
+      if (updatedLead) {
+        toast({
+          title: "Verificação Concluída",
+          description: `O lead "${lead.name}" foi verificado. Status do Becon: ${result.isRegistered ? "Registrado" : "Não Registrado"}.`,
+          variant: "success",
+        });
+      }
+
+      return updatedLead;
+
+    } catch (err) {
+      console.error('❌ Erro ao verificar Becon:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido.';
+      toast({
+        title: "Erro na Verificação",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
   // Iniciar polling
   const startPolling = () => {
     if (pollingInterval.current) {
@@ -201,5 +251,6 @@ export function useLeads() {
     updateLead,
     deleteLead,
     deleteMultipleLeads,
+    verifyAndUpdateBecon, // Adicione aqui
   }
 }

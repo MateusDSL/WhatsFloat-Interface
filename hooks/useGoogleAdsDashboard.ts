@@ -33,13 +33,7 @@ interface UseGoogleAdsDashboardReturn {
   clearSort: () => void;
   getSortIcon: (key: string) => { icon: string; className: string };
   
-  // Debug info
-  debugInfo: {
-    totalCampaigns: number;
-    filteredCount: number;
-    hasDateFilter: boolean;
-    lastFetch: string | null;
-  };
+
 }
 
 export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboardReturn {
@@ -230,13 +224,7 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
       : { icon: '↓', className: 'w-4 h-4' };
   }, [sortConfig]);
 
-  // Informações de debug
-  const debugInfo = useMemo(() => ({
-    totalCampaigns: campaigns.length,
-    filteredCount: filteredCampaigns.length,
-    hasDateFilter: !!(dateFilter.from && dateFilter.to),
-    lastFetch: lastFetchRef.current
-  }), [campaigns.length, filteredCampaigns.length, dateFilter.from, dateFilter.to]);
+
 
   return {
     // Estados
@@ -261,9 +249,6 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     // Funções utilitárias
     handleSort,
     clearSort,
-    getSortIcon,
-    
-    // Debug info
-    debugInfo
+    getSortIcon
   };
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useGoogleAdsDashboard } from '../hooks/useGoogleAdsDashboard';
 import { GoogleAdsFormatters } from '@/lib/google-ads-formatters';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -8,15 +9,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDown, MapPin, Target } from 'lucide-react';
 import { GoogleAdsDateFilter } from './google-ads-date-filter';
 import { GoogleAdsChart } from './google-ads-chart';
+import { KeywordsChartFixed } from './keywords-chart-fixed';
+
 
 interface GoogleAdsDashboardProps {
   customerId?: string;
 }
 
-export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
+export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDashboardProps) {
+  const [activeTab, setActiveTab] = useState('campaigns');
+  const [inputCustomerId, setInputCustomerId] = useState('');
+
+  // Get customerId from prop or environment variable
+  const customerId = propCustomerId || process.env.NEXT_PUBLIC_GOOGLE_CUSTOMER_ID;
+
   // Usar o hook otimizado
   const {
     searchTerm,
@@ -31,14 +41,10 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
     aggregatedMetrics,
     handleSort,
     clearSort,
-    getSortIcon,
-    debugInfo
+    getSortIcon
   } = useGoogleAdsDashboard(customerId);
 
-  // Debug logs otimizados
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📊 Debug Info:', debugInfo);
-  }
+
 
   // Componentes de skeleton
   const StatCardSkeleton = () => (
@@ -70,7 +76,60 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
     </TableRow>
   );
 
+  // Configuration section when customerId is not available
+  if (!customerId) {
     return (
+      <div className="flex-1 p-4 space-y-4 overflow-auto">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-600" />
+              Configuração do Google Ads
+            </CardTitle>
+            <CardDescription>
+              Configure seu Customer ID do Google Ads para acessar os dados das campanhas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="customerId" className="text-sm font-medium text-gray-700">
+                Google Ads Customer ID
+              </label>
+              <Input
+                id="customerId"
+                type="text"
+                placeholder="Ex: 1234567890"
+                value={inputCustomerId}
+                onChange={(e) => setInputCustomerId(e.target.value)}
+                className="max-w-md"
+              />
+              <p className="text-xs text-gray-500">
+                Encontre seu Customer ID no Google Ads Manager Account
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  if (inputCustomerId) {
+                    // For now, just show an alert. In a real app, you'd save this to settings
+                    alert(`Customer ID configurado: ${inputCustomerId}\n\nPara persistir esta configuração, adicione NEXT_PUBLIC_GOOGLE_CUSTOMER_ID=${inputCustomerId} ao seu arquivo .env.local`);
+                  }
+                }}
+                disabled={!inputCustomerId}
+              >
+                Configurar
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Recarregar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
     <div className="flex-1 p-4 space-y-4 overflow-auto">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
@@ -183,8 +242,22 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
         <GoogleAdsChart customerId={customerId} dateFilter={dateFilter} />
       </div>
 
-      {/* Campanhas Table */}
-      <Card className="flex-1 flex flex-col min-h-0 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
+      {/* Tabs Section */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="campaigns" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Campanhas
+          </TabsTrigger>
+          <TabsTrigger value="keywords" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Palavras-chave
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="campaigns" className="mt-6">
+          {/* Campanhas Table */}
+          <Card className="flex-1 flex flex-col min-h-0 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
         <CardHeader className="flex-shrink-0 pb-4">
           <div className="flex items-center justify-between">
             <div>
@@ -424,8 +497,24 @@ export function GoogleAdsDashboard({ customerId }: GoogleAdsDashboardProps) {
 
         </CardContent>
       </Card>
+        </TabsContent>
+
+
+
+                 <TabsContent value="keywords" className="mt-6">
+           <KeywordsChartFixed
+             customerId={customerId}
+             dateFilter={dateFilter ? {
+               from: dateFilter.from?.toISOString().split('T')[0] || '',
+               to: dateFilter.to?.toISOString().split('T')[0] || ''
+             } : undefined}
+           />
+         </TabsContent>
+
+         
+
+
+      </Tabs>
     </div>
   );
-
-  
 }

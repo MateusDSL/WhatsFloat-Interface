@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     });
 
     const client = await auth.getClient();
-    const googleAdsService = google.ads({ version: 'v16', auth: client });
+    const googleAdsService = google.ads({ version: 'v21', auth: client });
 
     let query: string;
 

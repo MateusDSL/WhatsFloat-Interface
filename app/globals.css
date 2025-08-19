@@ -88,3 +88,116 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Remover outlines dos elementos dos gráficos */
+.recharts-pie-sector,
+.recharts-cell,
+.recharts-bar-rectangle,
+.recharts-area-area,
+.recharts-line-dot,
+.recharts-dot,
+.recharts-sector,
+.recharts-pie,
+.recharts-bar,
+.recharts-area,
+.recharts-line,
+.recharts-scatter {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+.recharts-pie-sector:focus,
+.recharts-cell:focus,
+.recharts-bar-rectangle:focus,
+.recharts-area-area:focus,
+.recharts-line-dot:focus,
+.recharts-dot:focus,
+.recharts-sector:focus,
+.recharts-pie:focus,
+.recharts-bar:focus,
+.recharts-area:focus,
+.recharts-line:focus,
+.recharts-scatter:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+/* Remover outlines do tooltip */
+.recharts-tooltip-wrapper,
+.recharts-tooltip-wrapper * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+.recharts-tooltip-wrapper:focus,
+.recharts-tooltip-wrapper *:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+/* Remover outlines de todos os elementos SVG do Recharts */
+.recharts-wrapper svg * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+.recharts-wrapper svg *:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+/* Remover outlines específicos para elementos clicáveis */
+.recharts-pie-sector:hover,
+.recharts-cell:hover,
+.recharts-bar-rectangle:hover,
+.recharts-area-area:hover,
+.recharts-line-dot:hover,
+.recharts-dot:hover {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+/* Regra global para remover outlines de todos os elementos SVG */
+svg * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+svg *:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Regra específica para elementos do Recharts */
+.recharts-wrapper * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.recharts-wrapper *:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Regra específica para elementos path (usados nos gráficos de pizza) */
+path {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+path:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+path:hover {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}

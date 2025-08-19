@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, Users, MapPin, PieChart as PieChartIcon } from "lucide-react"
 import { getStateFromPhone, detectGender, CHART_COLORS } from "@/lib/lead-utils"
+import { DemographicsTooltip } from "@/components/ui/enhanced-tooltip"
 
 interface Lead {
   id: number
@@ -104,25 +105,7 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
   const topItemPercentage = topItem ? ((topItem.value / totalLeads) * 100).toFixed(1) : '0'
 
   const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0]
-      const percentage = ((data.value / totalLeads) * 100).toFixed(1)
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-4 border border-gray-200 rounded-xl shadow-2xl">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.fill }}></div>
-            <p className="font-semibold text-gray-900">{data.name}</p>
-          </div>
-                     <div className="flex items-center gap-2">
-             <Users className="w-4 h-4 text-green-600" />
-             <p className="text-lg font-bold text-green-600">
-               {data.value} leads ({percentage}%)
-             </p>
-           </div>
-        </div>
-      )
-    }
-    return null
+    return <DemographicsTooltip active={active} payload={payload} total={totalLeads} />
   }
 
   const getChartTitle = () => {
@@ -214,7 +197,7 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
         {loading ? (
           <PieChartSkeleton />
         ) : (
-          <div className="h-[360px] w-full relative">
+          <div className="h-[360px] w-full relative" style={{ zIndex: 1, outline: 'none' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -227,12 +210,17 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
                   dataKey="value"
                   animationDuration={1500}
                   animationBegin={0}
+                  style={{ outline: 'none' }}
                 >
                   {chartData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.fill}
-                      className="hover:opacity-80 transition-opacity duration-200"
+                      className="hover:opacity-80 transition-opacity duration-200 focus:outline-none"
+                      style={{ 
+                        outline: 'none',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
                     />
                   ))}
                 </Pie>

@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, eachDayOfInterval, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { TrendingUp, Users, Calendar } from "lucide-react"
+import { LeadsChartTooltip } from "@/components/ui/enhanced-tooltip"
 
 interface Lead {
   id: number
@@ -125,34 +126,7 @@ function LeadsChartComponent({ leads, dateFilter, loading = false }: LeadsChartP
   )
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      const isTodayData = isToday(data.originalDate)
-      
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-4 border border-gray-200 rounded-xl shadow-2xl">
-          <div className="flex items-center gap-2 mb-2">
-                         <Calendar className="w-4 h-4 text-green-600" />
-            <p className="font-semibold text-gray-900">{data.fullDate}</p>
-            {isTodayData && (
-                           <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full font-medium">
-               Hoje
-             </span>
-            )}
-          </div>
-                     <div className="flex items-center gap-2">
-             <Users className="w-4 h-4 text-green-600" />
-             <p className="text-lg font-bold text-green-600">
-               {payload[0].value} {payload[0].value === 1 ? 'lead' : 'leads'}
-             </p>
-           </div>
-          {data.dayName && (
-            <p className="text-sm text-gray-500 mt-1 capitalize">{data.dayName}</p>
-          )}
-        </div>
-      )
-    }
-    return null
+    return <LeadsChartTooltip active={active} payload={payload} label={label} />
   }
 
   return (
@@ -250,7 +224,8 @@ function LeadsChartComponent({ leads, dateFilter, loading = false }: LeadsChartP
                     <Cell 
                       key={`cell-${index}`}
                       fill={getBarColor(entry.leads, index)}
-                      className="hover:opacity-80 transition-opacity duration-200"
+                      className="hover:opacity-80 transition-opacity duration-200 focus:outline-none"
+                      style={{ outline: 'none' }}
                     />
                   ))}
                 </Bar>

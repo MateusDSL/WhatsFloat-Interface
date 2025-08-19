@@ -76,6 +76,9 @@ const TableRowSkeleton = () => (
       <Skeleton className="h-4 w-20" />
     </TableCell>
     <TableCell>
+      <Skeleton className="h-4 w-20" />
+    </TableCell>
+    <TableCell>
       <Skeleton className="h-6 w-12" />
     </TableCell>
   </TableRow>
@@ -88,6 +91,7 @@ const mapLeadToDisplay = (lead: Lead) => ({
   email: lead.phone, // Usando phone como email temporariamente
   phone: lead.phone,
   campaign: lead.nome_campanha_formatado || 'Não Rastreada', // Usar apenas nome_campanha_formatado
+  utm_campaign: lead.utm_campaign || 'N/A', // Adicionar utm_campaign
   utm_term: lead.utm_term,
   utm_medium: lead.utm_medium,
   beacon: Boolean(lead.is_becon), // Garantir que seja sempre boolean
@@ -175,6 +179,7 @@ export default function LeadsPage() {
       lead.name.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
       lead.phone.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
       (lead.campaign && lead.campaign.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
+      (lead.utm_campaign && lead.utm_campaign.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
       (lead.utm_term && lead.utm_term.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
       (lead.utm_medium && lead.utm_medium.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
       (lead.source && lead.source.toLowerCase().includes(state.searchTerm.toLowerCase()))
@@ -593,7 +598,7 @@ export default function LeadsPage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Buscar por nome, telefone, campanha formatada ou origem..."
+                      placeholder="Buscar por nome, telefone, campanha, conjunto ou origem..."
                       value={state.searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                                              className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200"
@@ -694,6 +699,7 @@ export default function LeadsPage() {
                         <TableHead className="w-40">Telefone / Estado</TableHead>
                                                                           <TableHead className="w-24">Origem</TableHead>
                          <TableHead className="w-28">Campanha</TableHead>
+                         <TableHead className="w-28">Conjunto</TableHead>
                          <TableHead className="w-28">Termo</TableHead>
                                                    <TableHead className="w-20">Becon</TableHead>
                       </TableRow>
@@ -738,6 +744,9 @@ export default function LeadsPage() {
                          </TableCell>
                          <TableCell className="w-28">
                            <div className="text-sm">{lead.campaign || 'Não Rastreada'}</div>
+                         </TableCell>
+                         <TableCell className="w-28">
+                           <div className="text-sm text-gray-600">{lead.utm_campaign || 'N/A'}</div>
                          </TableCell>
                          <TableCell className="w-28">
                            <div className="text-sm text-gray-600">{lead.utm_term || 'N/A'}</div>

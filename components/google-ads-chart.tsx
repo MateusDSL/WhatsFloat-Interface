@@ -7,6 +7,7 @@ import { Skeleton } from './ui/skeleton';
 import { TrendingUp, DollarSign, Target } from 'lucide-react';
 import { formatGoogleAdsData } from '@/hooks/useGoogleAds';
 import { GoogleAdsStatesChart } from './google-ads-states-chart';
+import { GoogleAdsTooltip } from '@/components/ui/enhanced-tooltip';
 
 // Função utilitária para formatar datas no fuso horário do Brasil
 const formatDateToBrazil = (dateString: string) => {
@@ -176,22 +177,7 @@ export function GoogleAdsChart({ customerId, dateFilter }: GoogleAdsChartProps) 
 
   // Customizar tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-900 mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.name === 'Investimento' 
-                ? formatGoogleAdsData.formatCost(entry.value * 1000000) // Converter de volta para micros
-                : `${entry.value.toFixed(2)} conversões`
-              }
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
+    return <GoogleAdsTooltip active={active} payload={payload} label={label} />
   };
 
   // Componente de loading
@@ -321,6 +307,7 @@ export function GoogleAdsChart({ customerId, dateFilter }: GoogleAdsChartProps) 
                     fillOpacity={0.3}
                     dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
                     activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 3 }}
+                    style={{ outline: 'none' }}
                   />
                   <Area
                     yAxisId="right"
@@ -333,6 +320,7 @@ export function GoogleAdsChart({ customerId, dateFilter }: GoogleAdsChartProps) 
                     fillOpacity={0.3}
                     dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
                     activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 3 }}
+                    style={{ outline: 'none' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

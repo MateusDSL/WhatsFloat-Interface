@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, Users, MapPin } from "lucide-react"
 import { getStateFromPhone, detectGender, CHART_COLORS } from "@/lib/lead-utils"
+import { DemographicsTooltip } from "@/components/ui/enhanced-tooltip"
 
 interface Lead {
   id: number
@@ -104,19 +105,7 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
   const topItemPercentage = topItem ? ((topItem.value / totalLeads) * 100).toFixed(1) : '0'
 
   const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0]
-      const percentage = ((data.value / totalLeads) * 100).toFixed(1)
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-blue-600">
-            <span className="font-medium">{data.value}</span> leads ({percentage}%)
-          </p>
-        </div>
-      )
-    }
-    return null
+    return <DemographicsTooltip active={active} payload={payload} total={totalLeads} />
   }
 
   const getChartTitle = () => {
@@ -207,7 +196,7 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
         {loading ? (
           <PieChartSkeleton />
         ) : (
-          <div className="h-[360px] w-full relative">
+          <div className="h-[360px] w-full relative" style={{ zIndex: 1, outline: 'none' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -218,9 +207,18 @@ function DemographicsChartComponent({ leads, dateFilter, loading = false }: Demo
                   outerRadius={120}
                   paddingAngle={3}
                   dataKey="value"
+                  style={{ outline: 'none' }}
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill}
+                      className="focus:outline-none"
+                      style={{ 
+                        outline: 'none',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />

@@ -12,6 +12,7 @@ import { useLeads } from "@/hooks/useLeads"
 import { getStateFromPhone, detectGender, CHART_COLORS } from "@/lib/lead-utils"
 import { differenceInDays, subDays, startOfDay, endOfDay } from "date-fns"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts"
+import { LeadsChartTooltip, DemographicsTooltip } from "@/components/ui/enhanced-tooltip"
 
 // Skeleton components
 const StatsCardSkeleton = () => (
@@ -233,38 +234,11 @@ export default function DashboardPage() {
   }
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-900">{label}</p>
-          <p className="text-green-600 font-bold">
-            {payload[0].value} leads
-          </p>
-        </div>
-      )
-    }
-    return null
+    return <LeadsChartTooltip active={active} payload={payload} label={label} />
   }
 
   const PieTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0]
-      const total = stats.totalLeads
-      const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0'
-      
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-3 border border-gray-200 rounded-lg shadow-lg">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.fill }}></div>
-            <p className="font-semibold text-gray-900">{data.name}</p>
-          </div>
-          <p className="text-green-600 font-bold">
-            {data.value} leads ({percentage}%)
-          </p>
-        </div>
-      )
-    }
-    return null
+    return <DemographicsTooltip active={active} payload={payload} total={stats.totalLeads} />
   }
 
   return (

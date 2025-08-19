@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { TrendingUp, MapPin } from 'lucide-react';
+import { DemographicsTooltip } from '@/components/ui/enhanced-tooltip';
 
 interface GoogleAdsStatesChartProps {
   customerId?: string;
@@ -118,24 +119,7 @@ export function GoogleAdsStatesChart({ customerId, dateFilter }: GoogleAdsStates
   const topStatePercentage = topState ? ((topState.value / totalConversions) * 100).toFixed(1) : '0';
 
   const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0];
-      const percentage = ((data.value / totalConversions) * 100).toFixed(1);
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-blue-600">
-            <span className="font-medium">{data.value.toFixed(2)}</span> conversões ({percentage}%)
-          </p>
-          {data.totalCost > 0 && (
-            <p className="text-green-600 text-sm">
-              Custo: R$ {data.totalCost.toFixed(2)}
-            </p>
-          )}
-        </div>
-      );
-    }
-    return null;
+    return <DemographicsTooltip active={active} payload={payload} total={totalConversions} />
   };
 
   // Componente de skeleton para o gráfico de donut
@@ -174,7 +158,7 @@ export function GoogleAdsStatesChart({ customerId, dateFilter }: GoogleAdsStates
             <p className="text-red-500 max-w-md">{error}</p>
           </div>
         ) : chartData.length > 0 ? (
-          <div className="h-[360px] w-full relative">
+          <div className="h-[360px] w-full relative" style={{ zIndex: 1, outline: 'none' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -185,9 +169,18 @@ export function GoogleAdsStatesChart({ customerId, dateFilter }: GoogleAdsStates
                   outerRadius={120}
                   paddingAngle={3}
                   dataKey="value"
+                  style={{ outline: 'none' }}
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill}
+                      className="focus:outline-none"
+                      style={{ 
+                        outline: 'none',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />

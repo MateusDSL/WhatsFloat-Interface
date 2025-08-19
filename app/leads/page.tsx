@@ -3,7 +3,7 @@
 import type React from "react"
 import { DollarSign } from "lucide-react"
 
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { Search, Download, Users, TrendingUp, CalendarIcon, Trash2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,103 +20,19 @@ import { AdvancedDatePicker } from "@/components/advanced-date-picker"
 import { SidebarWrapper } from "@/components/sidebar-wrapper"
 import { LeadsChart } from "@/components/leads-chart"
 import { DemographicsChart } from "@/components/demographics-chart"
+import { LeadsErrorState } from "@/components/error-state"
 import { toast } from "@/hooks/use-toast"
 import { useLeads } from "@/hooks/useLeads"
+import { useLeadsPageState } from "@/hooks/useLeadsPageState"
 import { Lead } from "@/lib/supabase"
 import { differenceInDays, subDays, startOfDay, endOfDay } from "date-fns"
 import { AuthGuard } from "@/components/auth-guard"
+import { getStateFromPhone } from "@/lib/lead-utils"
 
 const sourceLabels = {
   google: "Google",
   meta: "Meta",
   "nao-identificado": "Não Identificado",
-}
-
-// Mapeamento de DDD para estados
-const dddToState: { [key: string]: string } = {
-  '11': 'SP',
-  '12': 'SP',
-  '13': 'SP',
-  '14': 'SP',
-  '15': 'SP',
-  '16': 'SP',
-  '17': 'SP',
-  '18': 'SP',
-  '19': 'SP',
-  '21': 'RJ',
-  '22': 'RJ',
-  '24': 'RJ',
-  '27': 'ES',
-  '28': 'ES',
-  '31': 'MG',
-  '32': 'MG',
-  '33': 'MG',
-  '34': 'MG',
-  '35': 'MG',
-  '37': 'MG',
-  '38': 'MG',
-  '41': 'PR',
-  '42': 'PR',
-  '43': 'PR',
-  '44': 'PR',
-  '45': 'PR',
-  '46': 'PR',
-  '47': 'SC',
-  '48': 'SC',
-  '49': 'SC',
-  '51': 'RS',
-  '53': 'RS',
-  '54': 'RS',
-  '55': 'RS',
-  '61': 'DF',
-  '62': 'GO',
-  '63': 'TO',
-  '64': 'GO',
-  '65': 'MT',
-  '66': 'MT',
-  '67': 'MS',
-  '68': 'AC',
-  '69': 'RO',
-  '71': 'BA',
-  '73': 'BA',
-  '74': 'BA',
-  '75': 'BA',
-  '77': 'BA',
-  '79': 'SE',
-  '81': 'PE',
-  '82': 'AL',
-  '83': 'PB',
-  '84': 'RN',
-  '85': 'CE',
-  '86': 'PI',
-  '87': 'PE',
-  '88': 'CE',
-  '89': 'PI',
-  '91': 'PA',
-  '92': 'AM',
-  '93': 'PA',
-  '94': 'PA',
-  '95': 'RR',
-  '96': 'AP',
-  '97': 'AM',
-  '98': 'MA',
-  '99': 'MA'
-}
-
-// Função para extrair DDD e retornar estado
-const getStateFromPhone = (phone: string): string => {
-  if (!phone) return 'Não Rastreada'
-  
-  // Remove caracteres não numéricos
-  const cleanPhone = phone.replace(/\D/g, '')
-  
-  // Verifica se tem pelo menos 2 dígitos para DDD
-  if (cleanPhone.length < 2) return 'Não Rastreada'
-  
-  // Pega os primeiros 2 dígitos (DDD)
-  const ddd = cleanPhone.substring(0, 2)
-  
-  return dddToState[ddd] || 'Não Rastreada'
 }
 
 // Skeleton components
@@ -182,32 +98,30 @@ const mapLeadToDisplay = (lead: Lead) => ({
 })
 
 export default function LeadsPage() {
-  const { leads, loading, error, updateLead, deleteLead, deleteMultipleLeads, verifyAndUpdateBecon } = useLeads()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sourceFilter, setSourceFilter] = useState("todos")
-  const [campaignFilter, setCampaignFilter] = useState("todos")
-
-  const [selectedLeads, setSelectedLeads] = useState<number[]>([])
-  const [dateFilter, setDateFilter] = useState<{
-    from: Date | undefined
-    to: Date | undefined
-  }>({
-    from: undefined,
-    to: undefined,
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const leadsPerPage = 12
-  const [forceUpdate, setForceUpdate] = useState(0)
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, sourceFilter, campaignFilter, dateFilter])
+  const { leads, loading, error, retryCount, fetchLeads, updateLead, deleteLead, deleteMultipleLeads, verifyAndUpdateBecon } = useLeads()
+  
+  // Usar o novo hook de gerenciamento de estado
+  const {
+    state,
+    startIndex,
+    endIndex,
+    setSearchTerm,
+    setSourceFilter,
+    setCampaignFilter,
+    setDateFilter,
+    setCurrentPage,
+    setSelectedLeads,
+    addSelectedLead,
+    removeSelectedLead,
+    selectAllLeads,
+    clearSelectedLeads,
+    forceUpdate,
+  } = useLeadsPageState()
 
   // Mapear leads do Supabase para o formato da interface
   const mappedLeads = useMemo(() => {
     return leads.map(mapLeadToDisplay)
-  }, [leads, forceUpdate])
+  }, [leads, state.forceUpdate])
 
   // Gerar opções de filtro baseadas nos dados reais
   const getSourceFilterOptions = () => {
@@ -258,31 +172,29 @@ export default function LeadsPage() {
   const filteredLeads = mappedLeads.filter((lead, index) => {
     const originalLead = leads[index] // Acessar o lead original do Supabase
     const matchesSearch =
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lead.campaign && lead.campaign.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (lead.utm_term && lead.utm_term.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (lead.utm_medium && lead.utm_medium.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (lead.source && lead.source.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesSource = sourceFilter === "todos" || 
-                         (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
-                         (lead.source && lead.source === sourceFilter)
-    const matchesCampaign = campaignFilter === "todos" || 
-                           (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
-                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
+      lead.name.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      lead.phone.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      (lead.campaign && lead.campaign.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
+      (lead.utm_term && lead.utm_term.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
+      (lead.utm_medium && lead.utm_medium.toLowerCase().includes(state.searchTerm.toLowerCase())) ||
+      (lead.source && lead.source.toLowerCase().includes(state.searchTerm.toLowerCase()))
+    const matchesSource = state.sourceFilter === "todos" || 
+                         (state.sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
+                         (lead.source && lead.source === state.sourceFilter)
+    const matchesCampaign = state.campaignFilter === "todos" || 
+                           (state.campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === state.campaignFilter)
 
     // Date filter
     const leadDate = new Date(lead.createdAt)
     const matchesDate =
-      (!dateFilter.from || leadDate >= dateFilter.from) && (!dateFilter.to || leadDate <= dateFilter.to)
+      (!state.dateFilter.from || leadDate >= state.dateFilter.from) && (!state.dateFilter.to || leadDate <= state.dateFilter.to)
 
     return matchesSearch && matchesSource && matchesCampaign && matchesDate
   })
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredLeads.length / leadsPerPage)
-  const startIndex = (currentPage - 1) * leadsPerPage
-  const endIndex = startIndex + leadsPerPage
+  const totalPages = Math.ceil(filteredLeads.length / state.leadsPerPage)
   const currentLeads = filteredLeads.slice(startIndex, endIndex)
 
   // Calculate statistics based on filtered data (including source filter)
@@ -290,24 +202,24 @@ export default function LeadsPage() {
     const originalLead = leads[index] // Acessar o lead original do Supabase
     const leadDate = new Date(lead.createdAt)
     const matchesDate =
-      (!dateFilter.from || leadDate >= dateFilter.from) && (!dateFilter.to || leadDate <= dateFilter.to)
+      (!state.dateFilter.from || leadDate >= state.dateFilter.from) && (!state.dateFilter.to || leadDate <= state.dateFilter.to)
     
     // Apply source filter to statistics
-    const matchesSource = sourceFilter === "todos" || 
-                         (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
-                         (lead.source && lead.source === sourceFilter)
+    const matchesSource = state.sourceFilter === "todos" || 
+                         (state.sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
+                         (lead.source && lead.source === state.sourceFilter)
     
     // Apply campaign filter to statistics
-    const matchesCampaign = campaignFilter === "todos" || 
-                           (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
-                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
+    const matchesCampaign = state.campaignFilter === "todos" || 
+                           (state.campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                           (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === state.campaignFilter)
     
     return matchesDate && matchesSource && matchesCampaign
   })
 
   // Calcular estatísticas do período anterior para comparação
   const previousPeriodStats = useMemo(() => {
-    if (!dateFilter.from || !dateFilter.to) {
+    if (!state.dateFilter.from || !state.dateFilter.to) {
       return { 
         totalLeads: 0, 
         beaconLeads: 0,
@@ -318,10 +230,10 @@ export default function LeadsPage() {
     }
 
     // Calcular duração do período atual
-    const currentPeriodDays = differenceInDays(dateFilter.to, dateFilter.from) + 1
+    const currentPeriodDays = differenceInDays(state.dateFilter.to, state.dateFilter.from) + 1
     
     // Calcular período anterior
-    const previousPeriodEnd = subDays(dateFilter.from, 1)
+    const previousPeriodEnd = subDays(state.dateFilter.from, 1)
     const previousPeriodStart = subDays(previousPeriodEnd, currentPeriodDays - 1)
     
           // Filtrar leads do período anterior (incluindo filtro de origem)
@@ -331,14 +243,14 @@ export default function LeadsPage() {
         const matchesDate = leadDate >= startOfDay(previousPeriodStart) && leadDate <= endOfDay(previousPeriodEnd)
         
         // Apply source filter to previous period as well
-        const matchesSource = sourceFilter === "todos" || 
-                             (sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
-                             (lead.source && lead.source === sourceFilter)
+        const matchesSource = state.sourceFilter === "todos" || 
+                             (state.sourceFilter === "nao-rastreada" && (!lead.source || lead.source === 'nao-identificado')) ||
+                             (lead.source && lead.source === state.sourceFilter)
         
         // Apply campaign filter to previous period as well
-        const matchesCampaign = campaignFilter === "todos" || 
-                               (campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
-                               (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === campaignFilter)
+        const matchesCampaign = state.campaignFilter === "todos" || 
+                               (state.campaignFilter === "nao-rastreada" && (!originalLead.nome_campanha_formatado || !originalLead.nome_campanha_formatado.includes('['))) ||
+                               (originalLead.nome_campanha_formatado && originalLead.nome_campanha_formatado === state.campaignFilter)
         
         return matchesDate && matchesSource && matchesCampaign
       })
@@ -382,7 +294,7 @@ export default function LeadsPage() {
       untrackedPercentageChange: calculatePercentageChange(currentUntrackedLeads, previousUntrackedLeads),
       hasComparison: true
     }
-  }, [dateFilter, sourceFilter, campaignFilter, mappedLeads, filteredLeadsForStats])
+  }, [state.dateFilter, state.sourceFilter, state.campaignFilter, mappedLeads, filteredLeadsForStats])
 
   // Função auxiliar para formatar mensagem de comparação
   const formatComparisonMessage = (percentageChange: number | undefined, hasComparison: boolean) => {
@@ -439,7 +351,7 @@ export default function LeadsPage() {
       
       if (updatedLead) {
         // Forçar re-renderização
-        setForceUpdate(prev => prev + 1)
+        forceUpdate()
         toast({
           title: "Becon atualizado",
           description: `Becon ${newBeaconValue ? "ativado" : "desativado"} para ${lead.name}.`,
@@ -450,9 +362,10 @@ export default function LeadsPage() {
       }
     } catch (error) {
       console.error('❌ Erro ao alternar becon:', error)
+      const errorMessage = error instanceof Error ? error.message : "Erro ao atualizar becon do lead"
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar becon do lead.",
+        title: "Erro ao atualizar becon",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -461,38 +374,39 @@ export default function LeadsPage() {
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedLeads(currentLeads.map((lead) => lead.id || 0).filter(id => id > 0))
+      selectAllLeads(currentLeads.map((lead) => lead.id || 0).filter(id => id > 0))
     } else {
-      setSelectedLeads([])
+      clearSelectedLeads()
     }
   }
 
   const handleSelectLead = (leadId: number | undefined, checked: boolean) => {
     if (checked && leadId && leadId > 0) {
-      setSelectedLeads([...selectedLeads, leadId])
+      addSelectedLead(leadId)
     } else if (leadId && leadId > 0) {
-      setSelectedLeads(selectedLeads.filter((id) => id !== leadId))
+      removeSelectedLead(leadId)
     }
   }
 
-  const isAllSelected = currentLeads.length > 0 && selectedLeads.length === currentLeads.length
-  const isIndeterminate = selectedLeads.length > 0 && selectedLeads.length < currentLeads.length
+  const isAllSelected = currentLeads.length > 0 && state.selectedLeads.length === currentLeads.length
+  const isIndeterminate = state.selectedLeads.length > 0 && state.selectedLeads.length < currentLeads.length
 
   // Bulk actions
   const handleBulkDelete = async () => {
     try {
-      const leadsToDelete = selectedLeads.length
-      await deleteMultipleLeads(selectedLeads)
-      setSelectedLeads([])
+      const leadsToDelete = state.selectedLeads.length
+      await deleteMultipleLeads(state.selectedLeads)
+      clearSelectedLeads()
               toast({
           title: "Leads excluídos",
           description: `${leadsToDelete} leads foram excluídos com sucesso.`,
           variant: "success",
         })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao excluir leads"
       toast({
-        title: "Erro",
-        description: "Erro ao excluir leads.",
+        title: "Erro ao excluir leads",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -500,58 +414,47 @@ export default function LeadsPage() {
 
   const handleBulkBeaconToggle = async (beaconValue: boolean) => {
     try {
-      const leadsToUpdate = selectedLeads.length
-      await Promise.all(selectedLeads.map(id => updateLead(id, { is_becon: beaconValue })))
-      setSelectedLeads([])
+      const leadsToUpdate = state.selectedLeads.length
+      await Promise.all(state.selectedLeads.map(id => updateLead(id, { is_becon: beaconValue })))
+      clearSelectedLeads()
               toast({
                    title: "Becon atualizado",
          description: `Becon de ${leadsToUpdate} leads foi ${beaconValue ? "ativado" : "desativado"}.`,
           variant: "success",
         })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao atualizar becon dos leads"
       toast({
-        title: "Erro",
-                 description: "Erro ao atualizar becon dos leads.",
+        title: "Erro ao atualizar becon",
+        description: errorMessage,
         variant: "destructive",
       })
     }
   }
 
   const handleBulkExport = () => {
-    const selectedLeadsData = mappedLeads.filter((lead) => selectedLeads.includes(lead.id!))
+    const selectedLeadsData = mappedLeads.filter((lead) => state.selectedLeads.includes(lead.id!))
     console.log("Exportando leads:", selectedLeadsData)
           toast({
         title: "Exportação iniciada",
-        description: `Exportando ${selectedLeads.length} leads selecionados.`,
+        description: `Exportando ${state.selectedLeads.length} leads selecionados.`,
         variant: "info",
       })
   }
 
-  // Mostrar loading
-  if (loading) {
-    return (
-      <div className="flex h-screen bg-gray-50/50 overflow-hidden">
-        <SidebarWrapper />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Carregando leads...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Removido retorno global de loading para exibir skeletons por seção
 
   // Mostrar erro
   if (error) {
     return (
       <div className="flex h-screen bg-gray-50/50 overflow-hidden">
         <SidebarWrapper />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">Erro ao carregar leads: {error}</p>
-            <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
-          </div>
+        <div className="flex-1">
+          <LeadsErrorState
+            error={error}
+            retryCount={retryCount}
+            onRetry={fetchLeads}
+          />
         </div>
       </div>
     )
@@ -642,10 +545,10 @@ export default function LeadsPage() {
                        {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
               <div className="lg:col-span-7 h-full">
-                <LeadsChart leads={filteredLeadsForStats} dateFilter={dateFilter} loading={loading} />
+                <LeadsChart leads={filteredLeadsForStats} dateFilter={state.dateFilter} loading={loading} />
               </div>
               <div className="lg:col-span-3 h-full">
-                <DemographicsChart leads={filteredLeadsForStats} dateFilter={dateFilter} loading={loading} />
+                <DemographicsChart leads={filteredLeadsForStats} dateFilter={state.dateFilter} loading={loading} />
               </div>
             </div>
 
@@ -691,12 +594,12 @@ export default function LeadsPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       placeholder="Buscar por nome, telefone, campanha formatada ou origem..."
-                      value={searchTerm}
+                      value={state.searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                                              className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200"
                     />
                   </div>
-                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <Select value={state.sourceFilter} onValueChange={setSourceFilter}>
                                          <SelectTrigger className="w-full sm:w-[180px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
                       <SelectValue placeholder="Origem" />
                     </SelectTrigger>
@@ -708,7 +611,7 @@ export default function LeadsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                  <Select value={state.campaignFilter} onValueChange={setCampaignFilter}>
                     <SelectTrigger className="w-full sm:w-[200px] border-gray-200 focus:border-green-500 focus:ring-green-500 transition-colors duration-200">
                       <SelectValue placeholder="Campanha" />
                     </SelectTrigger>
@@ -720,12 +623,12 @@ export default function LeadsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <AdvancedDatePicker value={dateFilter} onChange={setDateFilter} />
+                  <AdvancedDatePicker value={state.dateFilter} onChange={setDateFilter} />
                 </div>
               )}
 
                              {/* Bulk Actions Bar */}
-               {selectedLeads.length > 0 && (
+               {state.selectedLeads.length > 0 && (
                  <div className="flex items-center justify-between p-4 mb-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-green-100 rounded-lg">
@@ -733,8 +636,8 @@ export default function LeadsPage() {
                      </div>
                      <div>
                        <span className="text-sm font-semibold text-green-900">
-                         {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""} selecionado
-                         {selectedLeads.length > 1 ? "s" : ""}
+                         {state.selectedLeads.length} lead{state.selectedLeads.length > 1 ? "s" : ""} selecionado
+                         {state.selectedLeads.length > 1 ? "s" : ""}
                        </span>
                        <p className="text-xs text-green-600">Ações em massa disponíveis</p>
                      </div>
@@ -765,7 +668,7 @@ export default function LeadsPage() {
                        Excluir
                      </Button>
 
-                     <Button variant="ghost" size="sm" onClick={() => setSelectedLeads([])} className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200">
+                     <Button variant="ghost" size="sm" onClick={clearSelectedLeads} className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200">
                        Cancelar
                      </Button>
                    </div>
@@ -807,12 +710,12 @@ export default function LeadsPage() {
                           <TableRow
                             key={lead.id}
                             className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"} ${
-                              selectedLeads.includes(lead.id) ? "bg-blue-50 border-blue-200" : ""
+                              state.selectedLeads.includes(lead.id) ? "bg-blue-50 border-blue-200" : ""
                             }`}
                           >
                             <TableCell>
                               <Checkbox
-                                checked={selectedLeads.includes(lead.id || 0)}
+                                checked={state.selectedLeads.includes(lead.id || 0)}
                                 onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
                                 aria-label={`Selecionar ${lead.name}`}
                               />
@@ -893,8 +796,8 @@ export default function LeadsPage() {
                        <Button
                          variant="outline"
                          size="sm"
-                         onClick={() => setCurrentPage(currentPage - 1)}
-                         disabled={currentPage === 1}
+                         onClick={() => setCurrentPage(state.currentPage - 1)}
+                         disabled={state.currentPage === 1}
                          className="border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200 disabled:opacity-50"
                        >
                          Anterior
@@ -904,22 +807,22 @@ export default function LeadsPage() {
                            let pageNumber
                            if (totalPages <= 5) {
                              pageNumber = i + 1
-                           } else if (currentPage <= 3) {
+                           } else if (state.currentPage <= 3) {
                              pageNumber = i + 1
-                           } else if (currentPage >= totalPages - 2) {
+                           } else if (state.currentPage >= totalPages - 2) {
                              pageNumber = totalPages - 4 + i
                            } else {
-                             pageNumber = currentPage - 2 + i
+                             pageNumber = state.currentPage - 2 + i
                            }
                            
                            return (
                              <Button
                                key={pageNumber}
-                               variant={currentPage === pageNumber ? "default" : "outline"}
+                               variant={state.currentPage === pageNumber ? "default" : "outline"}
                                size="sm"
                                onClick={() => setCurrentPage(pageNumber)}
                                className={`w-8 h-8 p-0 transition-all duration-200 ${
-                                 currentPage === pageNumber 
+                                 state.currentPage === pageNumber 
                                    ? "bg-green-600 text-white hover:bg-green-700" 
                                    : "border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
                                }`}
@@ -932,8 +835,8 @@ export default function LeadsPage() {
                        <Button
                          variant="outline"
                          size="sm"
-                         onClick={() => setCurrentPage(currentPage + 1)}
-                         disabled={currentPage === totalPages}
+                         onClick={() => setCurrentPage(state.currentPage + 1)}
+                         disabled={state.currentPage === totalPages}
                          className="border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-colors duration-200 disabled:opacity-50"
                        >
                          Próxima

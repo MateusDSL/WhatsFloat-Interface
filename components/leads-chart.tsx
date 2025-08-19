@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import React, { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
@@ -30,7 +30,7 @@ interface LeadsChartProps {
   loading?: boolean
 }
 
-export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartProps) {
+function LeadsChartComponent({ leads, dateFilter, loading = false }: LeadsChartProps) {
   const chartData = useMemo(() => {
     // Define date range - default to last 30 days if no filter
     const endDate = dateFilter.to || new Date()
@@ -96,7 +96,7 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
       <div className="flex-1 flex items-end justify-between gap-2 px-4 pb-8">
         {Array.from({ length: 7 }).map((_, index) => (
           <div key={index} className="flex-1 flex flex-col items-center gap-2">
-            <Skeleton className="w-full" style={{ 
+            <Skeleton className="w-full rounded-t-sm" style={{ 
               height: `${Math.random() * 60 + 20}%`,
               minHeight: '20px'
             }} />
@@ -109,6 +109,17 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
         {Array.from({ length: 7 }).map((_, index) => (
           <Skeleton key={index} className="w-6 h-3" />
         ))}
+      </div>
+      {/* Skeleton para estatísticas */}
+      <div className="flex items-center gap-4 mt-4 p-3 bg-gray-50/50 rounded-lg border border-gray-100">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-3 h-3 rounded-full" />
+          <Skeleton className="w-32 h-4" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-3 h-3 rounded-full" />
+          <Skeleton className="w-24 h-4" />
+        </div>
       </div>
     </div>
   )
@@ -259,3 +270,16 @@ export function LeadsChart({ leads, dateFilter, loading = false }: LeadsChartPro
     </Card>
   )
 }
+
+// Memoização do componente para evitar renderizações desnecessárias
+export const LeadsChart = React.memo(LeadsChartComponent, (prevProps, nextProps) => {
+  // Comparação customizada para otimizar a memoização
+  return (
+    prevProps.loading === nextProps.loading &&
+    prevProps.leads.length === nextProps.leads.length &&
+    prevProps.dateFilter.from?.getTime() === nextProps.dateFilter.from?.getTime() &&
+    prevProps.dateFilter.to?.getTime() === nextProps.dateFilter.to?.getTime() &&
+    // Comparação superficial dos leads (só verifica se os IDs mudaram)
+    JSON.stringify(prevProps.leads.map(l => l.id).sort()) === JSON.stringify(nextProps.leads.map(l => l.id).sort())
+  )
+})

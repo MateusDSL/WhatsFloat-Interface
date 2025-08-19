@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useGoogleAdsKeywords } from '../hooks/useGoogleAds';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Skeleton } from './ui/skeleton';
@@ -13,7 +13,7 @@ interface KeywordsChartProps {
   dateFilter?: { from: string; to: string };
 }
 
-export function KeywordsChart({ customerId, dateFilter }: KeywordsChartProps) {
+function KeywordsChartComponent({ customerId, dateFilter }: KeywordsChartProps) {
   const { keywordsData, campaignsData, topKeywords, totals, loading, error, fetchKeywordsData } = useGoogleAdsKeywords();
 
   useEffect(() => {
@@ -309,3 +309,13 @@ export function KeywordsChart({ customerId, dateFilter }: KeywordsChartProps) {
     </div>
   );
 }
+
+// Memoização do componente para evitar renderizações desnecessárias
+export const KeywordsChart = React.memo(KeywordsChartComponent, (prevProps, nextProps) => {
+  // Comparação customizada para otimizar a memoização
+  return (
+    prevProps.customerId === nextProps.customerId &&
+    prevProps.dateFilter?.from === nextProps.dateFilter?.from &&
+    prevProps.dateFilter?.to === nextProps.dateFilter?.to
+  )
+})

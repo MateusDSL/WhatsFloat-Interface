@@ -3,12 +3,26 @@ import { supabase, Lead } from '@/lib/supabase'
 import { useSettings } from '@/hooks/useSettings'
 import { useToast } from '@/hooks/use-toast'
 
-export function useLeads() {
+export interface UseLeadsResult {
+  leads: Lead[]
+  loading: boolean
+  error: string | null
+  retryCount: number
+  fetchLeads: () => Promise<void>
+  addLead: (lead: Omit<Lead, 'id' | 'created_at'>) => Promise<Lead | undefined>
+  updateLead: (id: number, updates: Partial<Lead>) => Promise<Lead>
+  deleteLead: (id: number) => Promise<void>
+  deleteMultipleLeads: (ids: number[]) => Promise<void>
+  verifyAndUpdateBecon: (leadId: number) => Promise<Lead | undefined>
+}
+
+export function useLeads(): UseLeadsResult {
   const { settings } = useSettings()
   const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const lastFetchTime = useRef<Date>(new Date())
   const pollingInterval = useRef<NodeJS.Timeout | null>(null)
 
@@ -16,6 +30,8 @@ export function useLeads() {
   const fetchLeads = async () => {
     try {
       setLoading(true)
+      setError(null) // Limpar erro anterior
+      
       const { data, error } = await supabase
         .from('leads')
         .select('*')
@@ -27,9 +43,19 @@ export function useLeads() {
 
       setLeads(data || [])
       lastFetchTime.current = new Date()
+      setRetryCount(0) // Reset retry count on success
     } catch (err) {
       console.error('❌ Erro ao carregar leads:', err)
-      setError(err instanceof Error ? err.message : 'Erro ao carregar leads')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar leads'
+      setError(errorMessage)
+      setRetryCount(prev => prev + 1)
+      
+      // Mostrar toast de erro
+      toast({
+        title: "Erro ao carregar leads",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -80,7 +106,16 @@ export function useLeads() {
       return data?.[0]
     } catch (err) {
       console.error('❌ Erro ao adicionar lead:', err)
-      setError(err instanceof Error ? err.message : 'Erro ao adicionar lead')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar lead'
+      setError(errorMessage)
+      
+      // Mostrar toast de erro
+      toast({
+        title: "Erro ao adicionar lead",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      
       throw err
     }
   }
@@ -112,7 +147,16 @@ export function useLeads() {
       return updatedLead
     } catch (err) {
       console.error('❌ Erro ao atualizar lead:', err)
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar lead')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar lead'
+      setError(errorMessage)
+      
+      // Mostrar toast de erro
+      toast({
+        title: "Erro ao atualizar lead",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      
       throw err
     }
   }
@@ -134,7 +178,16 @@ export function useLeads() {
       
     } catch (err) {
       console.error('❌ Erro ao deletar lead:', err)
-      setError(err instanceof Error ? err.message : 'Erro ao deletar lead')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao deletar lead'
+      setError(errorMessage)
+      
+      // Mostrar toast de erro
+      toast({
+        title: "Erro ao deletar lead",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      
       throw err
     }
   }
@@ -156,7 +209,16 @@ export function useLeads() {
       
     } catch (err) {
       console.error('❌ Erro ao deletar leads:', err)
-      setError(err instanceof Error ? err.message : 'Erro ao deletar leads')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao deletar leads'
+      setError(errorMessage)
+      
+      // Mostrar toast de erro
+      toast({
+        title: "Erro ao deletar leads",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      
       throw err
     }
   }
@@ -246,11 +308,12 @@ export function useLeads() {
     leads,
     loading,
     error,
+    retryCount,
     fetchLeads,
     addLead,
     updateLead,
     deleteLead,
     deleteMultipleLeads,
-    verifyAndUpdateBecon, // Adicione aqui
+    verifyAndUpdateBecon,
   }
 }

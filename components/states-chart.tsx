@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, Users, MapPin } from "lucide-react"
+import { getStateFromPhone, detectGender, CHART_COLORS } from "@/lib/lead-utils"
 
 interface Lead {
   id: number
@@ -29,125 +30,7 @@ interface DemographicsChartProps {
   loading?: boolean
 }
 
-// Mapeamento de DDD para estados
-const dddToState: { [key: string]: string } = {
-  '11': 'SP', '12': 'SP', '13': 'SP', '14': 'SP', '15': 'SP', '16': 'SP', '17': 'SP', '18': 'SP', '19': 'SP',
-  '21': 'RJ', '22': 'RJ', '24': 'RJ',
-  '27': 'ES', '28': 'ES',
-  '31': 'MG', '32': 'MG', '33': 'MG', '34': 'MG', '35': 'MG', '37': 'MG', '38': 'MG',
-  '41': 'PR', '42': 'PR', '43': 'PR', '44': 'PR', '45': 'PR', '46': 'PR',
-  '47': 'SC', '48': 'SC', '49': 'SC',
-  '51': 'RS', '53': 'RS', '54': 'RS', '55': 'RS',
-  '61': 'DF',
-  '62': 'GO', '63': 'TO', '64': 'GO',
-  '65': 'MT', '66': 'MT', '67': 'MS',
-  '68': 'AC', '69': 'RO',
-  '71': 'BA', '73': 'BA', '74': 'BA', '75': 'BA', '77': 'BA',
-  '79': 'SE',
-  '81': 'PE', '82': 'AL', '83': 'PB', '84': 'RN', '85': 'CE', '86': 'PI', '87': 'PE', '88': 'CE', '89': 'PI',
-  '91': 'PA', '92': 'AM', '93': 'PA', '94': 'PA', '95': 'RR', '96': 'AP', '97': 'AM', '98': 'MA', '99': 'MA'
-}
-
-// Função para extrair DDD e retornar estado
-const getStateFromPhone = (phone: string): string => {
-  if (!phone) return 'Não Rastreada'
-  
-  const cleanPhone = phone.replace(/\D/g, '')
-  
-  if (cleanPhone.length < 2) return 'Não Rastreada'
-  
-  const ddd = cleanPhone.substring(0, 2)
-  
-  return dddToState[ddd] || 'Não Rastreada'
-}
-
-// Função para detectar gênero baseado no nome
-const detectGender = (name: string): string => {
-  if (!name) return 'Não Identificado'
-  
-  // Nomes femininos comuns no Brasil
-  const femaleNames = [
-    // Nomes muito comuns
-    'maria', 'ana', 'juliana', 'patricia', 'alessandra', 'fernanda', 'camila', 'amanda', 'leticia', 'vanessa',
-    'bruna', 'jessica', 'carolina', 'gabriela', 'isabella', 'sophia', 'valentina', 'giulia', 'heloisa', 'luiza',
-    'manuela', 'cecilia', 'beatriz', 'laura', 'clara', 'mariana', 'barbara', 'rafaella', 'isabela', 'lorena',
-    'yasmin', 'nicole', 'sarah', 'lara', 'julia', 'victoria', 'emily', 'alice', 'sophie', 'melissa',
-    
-    // Nomes tradicionais femininos
-    'adriana', 'cristina', 'eliane', 'rosangela', 'silvia', 'regina', 'marcia', 'denise', 'eliana', 'fatima',
-    'graziela', 'ivone', 'josefa', 'karla', 'lucia', 'margarida', 'nadia', 'olga', 'paula', 'renata',
-    'sonia', 'tatiana', 'vera', 'wilma', 'yara', 'zenaida', 'angela', 'benedita', 'carmem', 'diana',
-    'elisa', 'flavia', 'gisele', 'helena', 'ines', 'janaina', 'karen', 'lilian', 'mirella', 'nayara',
-    'olivia', 'priscila', 'queila', 'rosana', 'sabrina', 'tamara', 'ursula', 'viviane', 'wanda', 'xuxa',
-    'yasmim', 'zuleica', 'adelaide', 'bernadete', 'cassandra', 'doralice', 'eunice', 'fabiana', 'geovana',
-    'hilda', 'iris', 'juliana', 'kelly', 'lais', 'mirela', 'nathalia', 'orlanda', 'paloma', 'quenia',
-    'rosemary', 'sueli', 'tania', 'valeria', 'waleska', 'xenia', 'yolanda', 'zilda'
-  ]
-  
-  // Nomes masculinos comuns no Brasil
-  const maleNames = [
-    // Nomes muito comuns
-    'jose', 'joao', 'antonio', 'francisco', 'carlos', 'paulo', 'pedro', 'lucas', 'luiz', 'marcos',
-    'luis', 'gabriel', 'rafael', 'daniel', 'marcelo', 'bruno', 'eduardo', 'felipe', 'rodrigo',
-    'anderson', 'thiago', 'leonardo', 'guilherme', 'gustavo', 'henrique', 'matheus', 'arthur', 'bernardo', 'davi',
-    'heitor', 'samuel', 'joaquim', 'benicio', 'enzo', 'lorenzo', 'theo', 'noah', 'benjamin', 'diego',
-    
-    // Nomes tradicionais masculinos
-    'adriano', 'cristiano', 'elias', 'fabricio', 'hugo', 'igor', 'julio', 'kevin', 'miguel', 'nelson',
-    'otavio', 'quintino', 'ricardo', 'sergio', 'tiago', 'ulisses', 'vinicius', 'wagner', 'xavier', 'yago',
-    'zeus', 'alberto', 'benedito', 'caio', 'diego', 'elias', 'fabio', 'gilberto', 'heitor', 'ivan',
-    'jorge', 'kleber', 'leandro', 'mauro', 'nilo', 'osvaldo', 'pablo', 'quintino', 'roberto', 'sandro',
-    'tadeu', 'ulisses', 'valdir', 'washington', 'xavier', 'yuri', 'zeca', 'adilson', 'breno', 'caua',
-    'davi', 'elton', 'felipe', 'gabriel', 'henrique', 'italo', 'joel', 'kaique', 'luan', 'marcelo',
-    'nathan', 'otavio', 'pietro', 'rafael', 'samuel', 'tomas', 'vitor', 'wesley', 'xande', 'yago'
-  ]
-  
-  // Limpar e normalizar o nome
-  const cleanName = name.toLowerCase().trim()
-  const firstName = cleanName.split(' ')[0]
-  
-  // Verificar se é um nome feminino
-  if (femaleNames.includes(firstName)) {
-    return 'Feminino'
-  }
-  
-  // Verificar se é um nome masculino
-  if (maleNames.includes(firstName)) {
-    return 'Masculino'
-  }
-  
-  // Verificar sufixos típicos de gênero
-  const femaleSuffixes = ['a', 'ia', 'ina', 'ela', 'ana', 'ina', 'ela', 'ana', 'ina', 'ela']
-  const maleSuffixes = ['o', 'io', 'inho', 'elo', 'ano', 'inho', 'elo', 'ano', 'inho', 'elo']
-  
-  if (femaleSuffixes.some(suffix => firstName.endsWith(suffix))) {
-    return 'Feminino'
-  }
-  
-  if (maleSuffixes.some(suffix => firstName.endsWith(suffix))) {
-    return 'Masculino'
-  }
-  
-  // Se não conseguir identificar, retornar "Não Identificado"
-  return 'Não Identificado'
-}
-
-// Cores para os estados focados
-const STATE_COLORS = [
-  '#3b82f6', // Azul - SC
-  '#10b981', // Verde - PR
-  '#f59e0b', // Amarelo - RS
-  '#ef4444', // Vermelho - SP
-]
-
-// Cores para gênero
-const GENDER_COLORS = [
-  '#ec4899', // Rosa - Feminino
-  '#3b82f6', // Azul - Masculino
-  '#94a3b8', // Cinza - Não Identificado
-]
-
-export function DemographicsChart({ leads, dateFilter, loading = false }: DemographicsChartProps) {
+function DemographicsChartComponent({ leads, dateFilter, loading = false }: DemographicsChartProps) {
   const [chartType, setChartType] = useState<'estado' | 'genero'>('estado')
 
   const chartData = useMemo(() => {
@@ -173,10 +56,10 @@ export function DemographicsChart({ leads, dateFilter, loading = false }: Demogr
       const focusedStates = ['SC', 'PR', 'RS', 'SP']
       
       // Separar estados focados dos outros
-      const focusedData = focusedStates.map(state => ({
+      const focusedData: Array<{ name: string; value: number; fill: string }> = focusedStates.map(state => ({
         name: state,
         value: stateCounts[state] || 0,
-        fill: STATE_COLORS[focusedStates.indexOf(state)]
+        fill: CHART_COLORS.STATE_COLORS[focusedStates.indexOf(state)]
       })).filter(item => item.value > 0)
 
       // Calcular total dos outros estados
@@ -189,7 +72,7 @@ export function DemographicsChart({ leads, dateFilter, loading = false }: Demogr
         focusedData.push({
           name: 'Outros',
           value: otherStatesTotal,
-          fill: '#94a3b8' // Cor cinza para "Outros"
+          fill: CHART_COLORS.OTHERS_COLOR
         })
       }
 
@@ -206,9 +89,9 @@ export function DemographicsChart({ leads, dateFilter, loading = false }: Demogr
 
       // Mapear gêneros para cores
       const genderData = [
-        { name: 'Feminino', value: genderCounts['Feminino'] || 0, fill: GENDER_COLORS[0] },
-        { name: 'Masculino', value: genderCounts['Masculino'] || 0, fill: GENDER_COLORS[1] },
-        { name: 'Não Identificado', value: genderCounts['Não Identificado'] || 0, fill: GENDER_COLORS[2] }
+        { name: 'Feminino', value: genderCounts['Feminino'] || 0, fill: CHART_COLORS.GENDER_COLORS[0] },
+        { name: 'Masculino', value: genderCounts['Masculino'] || 0, fill: CHART_COLORS.GENDER_COLORS[1] },
+        { name: 'Não Identificado', value: genderCounts['Não Identificado'] || 0, fill: CHART_COLORS.GENDER_COLORS[2] }
       ].filter(item => item.value > 0)
 
       // Ordenar por quantidade decrescente
@@ -253,12 +136,32 @@ export function DemographicsChart({ leads, dateFilter, loading = false }: Demogr
   // Componente de skeleton para o gráfico de pizza
   const PieChartSkeleton = () => (
     <div className="h-[360px] w-full relative">
+      {/* Skeleton para o gráfico de pizza */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <Skeleton className="w-48 h-48 rounded-full" />
+        <div className="relative">
+          <Skeleton className="w-48 h-48 rounded-full" />
+          {/* Skeleton para fatias do gráfico */}
+          <div className="absolute inset-0 rounded-full overflow-hidden">
+            <div className="w-full h-full relative">
+              <div className="absolute top-0 left-1/2 w-1/2 h-1/2 bg-gray-200 transform -translate-x-1/2 rounded-tl-full"></div>
+              <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gray-300 rounded-tr-full"></div>
+              <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gray-100 rounded-bl-full"></div>
+              <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gray-400 rounded-br-full"></div>
+            </div>
+          </div>
+        </div>
       </div>
+      {/* Skeleton para o centro do gráfico */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <Skeleton className="w-16 h-8 mb-2" />
         <Skeleton className="w-24 h-4" />
+      </div>
+      {/* Skeleton para footer com item líder */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <div className="flex items-center justify-center gap-2 p-3 bg-gray-50/50 rounded-lg border border-gray-100">
+          <Skeleton className="w-4 h-4" />
+          <Skeleton className="w-48 h-4" />
+        </div>
       </div>
     </div>
   )
@@ -355,3 +258,16 @@ export function DemographicsChart({ leads, dateFilter, loading = false }: Demogr
     </Card>
   )
 }
+
+// Memoização do componente para evitar renderizações desnecessárias
+export const DemographicsChart = React.memo(DemographicsChartComponent, (prevProps, nextProps) => {
+  // Comparação customizada para otimizar a memoização
+  return (
+    prevProps.loading === nextProps.loading &&
+    prevProps.leads.length === nextProps.leads.length &&
+    prevProps.dateFilter.from?.getTime() === nextProps.dateFilter.from?.getTime() &&
+    prevProps.dateFilter.to?.getTime() === nextProps.dateFilter.to?.getTime() &&
+    // Comparação superficial dos leads (só verifica se os IDs mudaram)
+    JSON.stringify(prevProps.leads.map(l => l.id).sort()) === JSON.stringify(nextProps.leads.map(l => l.id).sort())
+  )
+})

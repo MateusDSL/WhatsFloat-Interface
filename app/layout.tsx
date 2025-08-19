@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
+import { FloatingChat } from '@/components/floating-chat'
 
 export const metadata: Metadata = {
   title: 'Leads Database - WhatsFloat',
@@ -22,6 +23,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system" storageKey="app-theme">
           {children}
           <Toaster />
+          <FloatingChat />
         </ThemeProvider>
       </body>
     </html>

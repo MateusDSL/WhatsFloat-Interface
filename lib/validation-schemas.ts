@@ -75,6 +75,14 @@ export const campaignsQuerySchema = z.object({
   dateFrom: dateSchema.optional(),
   dateTo: dateSchema.optional(),
   type: z.enum(['campaigns', 'ads', 'keywords']).optional(),
+  page: z.string().optional().transform((val) => {
+    const num = parseInt(val || '1');
+    return Math.max(1, num);
+  }),
+  limit: z.string().optional().transform((val) => {
+    const num = parseInt(val || '20');
+    return Math.max(1, Math.min(100, num)); // Limite entre 1 e 100
+  }),
 }).refine((data) => {
   // Se dateFrom está presente, dateTo também deve estar
   if (data.dateFrom && !data.dateTo) {

@@ -14,6 +14,7 @@ import { TrendingUp, Eye, MousePointer, DollarSign, Search, ChevronUp, ChevronDo
 import { GoogleAdsDateFilter } from './google-ads-date-filter';
 import { GoogleAdsChart } from './google-ads-chart';
 import { KeywordsChartFixed } from './keywords-chart-fixed';
+import { Pagination } from './ui/pagination';
 
 
 interface GoogleAdsDashboardProps {
@@ -33,10 +34,16 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
     dateFilter,
     setDateFilter,
     sortConfig,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    pagination,
     loading: campaignsLoading,
     error: campaignsError,
     clearError: clearCampaignsError,
     sortedCampaigns,
+    paginatedCampaigns,
     aggregatedMetrics,
     handleSort,
     clearSort,
@@ -62,6 +69,8 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
   const TableRowSkeleton = () => (
     <TableRow>
       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -256,6 +265,32 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
             </div>
            </div>
 
+           {/* Paginação e controles */}
+           {pagination && (
+             <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-2">
+                 <span className="text-sm text-gray-600">Itens por página:</span>
+                 <select
+                   value={itemsPerPage}
+                   onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                   className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:border-green-500 focus:ring-green-500"
+                 >
+                   <option value={10}>10</option>
+                   <option value={20}>20</option>
+                   <option value={50}>50</option>
+                   <option value={100}>100</option>
+                 </select>
+               </div>
+               <div className="text-sm text-gray-600">
+                 {pagination.totalItems > 0 ? (
+                   `Mostrando ${((currentPage - 1) * itemsPerPage) + 1} a ${Math.min(currentPage * itemsPerPage, pagination.totalItems)} de ${pagination.totalItems} campanhas`
+                 ) : (
+                   'Nenhuma campanha encontrada'
+                 )}
+               </div>
+             </div>
+           )}
+
           {/* Campanhas Table */}
           <div className="rounded-md border flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-auto">
@@ -344,6 +379,15 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                        </div>
                      </TableHead>
                      <TableHead 
+                       className="w-24 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                       onClick={() => handleSort('status')}
+                     >
+                       <div className="flex items-center justify-center gap-1">
+                         Status
+                         <span className={getSortIcon('status').className}>{getSortIcon('status').icon}</span>
+                       </div>
+                     </TableHead>
+                     <TableHead 
                        className="w-32 text-center cursor-pointer hover:bg-gray-50 transition-colors"
                        onClick={() => handleSort('budget')}
                      >
@@ -361,7 +405,7 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                       <TableRowSkeleton key={`skeleton-${index}`} />
                     ))
                   ) : (
-                    sortedCampaigns.map((campaign: any, index: number) => (
+                    paginatedCampaigns.map((campaign: any, index: number) => (
                                          <TableRow
                        key={`campaign-${campaign.campaign.id}-${index}`}
                        className={index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
@@ -394,6 +438,29 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                            {GoogleAdsFormatters.calculateConversionRate(campaign.metrics?.conversions || 0, campaign.metrics?.clicks || 0)}
                          </TableCell>
                          <TableCell className="text-center">
+                           <Badge 
+                             variant="outline"
+                             className={
+                               campaign.campaign.status === 'ENABLED' 
+                                 ? 'bg-green-50 text-green-700 border-green-200' 
+                                 : campaign.campaign.status === 'PAUSED'
+                                 ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                 : campaign.campaign.status === 'REMOVED'
+                                 ? 'bg-red-50 text-red-700 border-red-200'
+                                 : 'bg-gray-50 text-gray-700 border-gray-200'
+                             }
+                           >
+                             {campaign.campaign.status === 'ENABLED' 
+                               ? 'Ativa' 
+                               : campaign.campaign.status === 'PAUSED'
+                               ? 'Pausada'
+                               : campaign.campaign.status === 'REMOVED'
+                               ? 'Removida'
+                               : campaign.campaign.status
+                             }
+                           </Badge>
+                         </TableCell>
+                         <TableCell className="text-center">
                            {GoogleAdsFormatters.formatCost(campaign.campaign_budget?.amount_micros || 0)}
                          </TableCell>
                     </TableRow>
@@ -404,7 +471,7 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                   {!campaignsLoading && sortedCampaigns.length > 0 && (
                     <TableRow className="bg-gray-50/80 border-t-2 border-gray-200">
                       <TableCell className="font-semibold text-left text-gray-700">
-                        <div className="text-sm">TOTAIS</div>
+                        <div className="text-sm">TOTAIS ({sortedCampaigns.length} campanhas)</div>
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
                         {GoogleAdsFormatters.formatImpressions(aggregatedMetrics.totalImpressions)}
@@ -431,6 +498,9 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                         {aggregatedMetrics.averageConversionRate}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-gray-700">
+                        -
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-gray-700">
                         {GoogleAdsFormatters.formatCost(
                           sortedCampaigns.reduce((sum, campaign) => sum + (campaign.campaign_budget?.amount_micros || 0), 0)
                         )}
@@ -440,6 +510,18 @@ export function GoogleAdsDashboard({ customerId: propCustomerId }: GoogleAdsDash
                 </TableBody>
               </Table>
             </div>
+            
+            {/* Paginação */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="border-t border-gray-200 bg-gray-50/50">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                  className="bg-white"
+                />
+              </div>
+            )}
           </div>
 
 

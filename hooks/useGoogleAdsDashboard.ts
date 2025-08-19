@@ -17,10 +17,25 @@ interface UseGoogleAdsDashboardReturn {
   sortConfig: { key: string; direction: 'asc' | 'desc' } | null;
   setSortConfig: (config: { key: string; direction: 'asc' | 'desc' } | null) => void;
   
+  // Paginação
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  itemsPerPage: number;
+  setItemsPerPage: (limit: number) => void;
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  } | null;
+  
   // Dados processados
   campaigns: any[];
   filteredCampaigns: any[];
   sortedCampaigns: any[];
+  paginatedCampaigns: any[];
   aggregatedMetrics: CalculatedMetrics;
   
   // Estados de loading e erro
@@ -59,6 +74,10 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     direction: 'asc' | 'desc';
   } | null>(null);
 
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   // Cache para evitar requisições desnecessárias
   const cacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
   const lastFetchRef = useRef<string | null>(null);
@@ -75,8 +94,8 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
   const campaigns = data?.data || [];
 
   // Função para gerar chave de cache
-  const getCacheKey = useCallback((customerId?: string, dateFrom?: string, dateTo?: string) => {
-    return `${customerId || 'default'}-${dateFrom || 'no-start'}-${dateTo || 'no-end'}`;
+  const getCacheKey = useCallback((customerId?: string, dateFrom?: string, dateTo?: string, page?: number, limit?: number) => {
+    return `${customerId || 'default'}-${dateFrom || 'no-start'}-${dateTo || 'no-end'}-${page || 1}-${limit || 20}`;
   }, []);
 
   // Função para verificar se o cache ainda é válido (5 minutos)
@@ -89,7 +108,7 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     const dateFrom = dateFilter.from ? dateFilter.from.toISOString().split('T')[0] : undefined;
     const dateTo = dateFilter.to ? dateFilter.to.toISOString().split('T')[0] : undefined;
     
-    const cacheKey = getCacheKey(customerId, dateFrom, dateTo);
+    const cacheKey = getCacheKey(customerId, dateFrom, dateTo, currentPage, itemsPerPage);
     const cached = cacheRef.current.get(cacheKey);
     
     // Verificar se temos dados em cache válidos
@@ -99,10 +118,10 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     }
     
     // Buscar novos dados
-    console.log('🔍 Buscando novos dados:', { customerId, dateFrom, dateTo });
+    console.log('🔍 Buscando novos dados:', { customerId, dateFrom, dateTo, currentPage, itemsPerPage });
     lastFetchRef.current = new Date().toISOString();
     
-    await fetchCampaigns(customerId, dateFrom, dateTo);
+    await fetchCampaigns(customerId, dateFrom, dateTo, currentPage, itemsPerPage);
     
     // Armazenar no cache após busca bem-sucedida
     if (data) {
@@ -111,7 +130,7 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
         timestamp: Date.now()
       });
     }
-  }, [customerId, dateFilter.from, dateFilter.to, fetchCampaigns, data, getCacheKey, isCacheValid]);
+  }, [customerId, dateFilter.from, dateFilter.to, currentPage, itemsPerPage, fetchCampaigns, data, getCacheKey, isCacheValid]);
 
   // useEffect otimizado com debounce melhorado
   useEffect(() => {
@@ -120,7 +139,7 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     }, 300); // Reduzido para 300ms para melhor responsividade
 
     return () => clearTimeout(timeoutId);
-  }, [fetchDataOptimized]);
+  }, [fetchDataOptimized, currentPage, itemsPerPage]);
 
   // Filtros otimizados com useMemo
   const filteredCampaigns = useMemo(() => {
@@ -179,6 +198,19 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
           aValue = a.campaign_budget?.amount_micros || 0;
           bValue = b.campaign_budget?.amount_micros || 0;
           break;
+        case 'status':
+          // Ordenar: ENABLED (1), PAUSED (2), REMOVED (3), outros (4)
+          const getStatusValue = (status: string) => {
+            switch (status) {
+              case 'ENABLED': return 1;
+              case 'PAUSED': return 2;
+              case 'REMOVED': return 3;
+              default: return 4;
+            }
+          };
+          aValue = getStatusValue(a.campaign.status);
+          bValue = getStatusValue(b.campaign.status);
+          break;
         default:
           return 0;
       }
@@ -224,6 +256,15 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
       : { icon: '↓', className: 'w-4 h-4' };
   }, [sortConfig]);
 
+  // Usar paginação da API
+  const paginatedCampaigns = sortedCampaigns;
+  const pagination = data?.pagination || null;
+
+  // Resetar página quando mudar filtros (exceto paginação)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFilter]);
+
 
 
   return {
@@ -235,10 +276,18 @@ export function useGoogleAdsDashboard(customerId?: string): UseGoogleAdsDashboar
     sortConfig,
     setSortConfig,
     
+    // Paginação
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    pagination,
+    
     // Dados processados
     campaigns,
     filteredCampaigns,
     sortedCampaigns,
+    paginatedCampaigns,
     aggregatedMetrics,
     
     // Estados de loading e erro

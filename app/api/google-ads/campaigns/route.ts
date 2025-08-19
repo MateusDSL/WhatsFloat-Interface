@@ -38,13 +38,14 @@ function setCachedData(cacheKey: string, data: any) {
 
    campaigns.forEach(campaign => {
      const campaignId = campaign.campaign.id;
+     const impressions = campaign.metrics?.impressions || 0;
      
      if (!campaignMap.has(campaignId)) {
        // Primeira ocorrência da campanha
        campaignMap.set(campaignId, {
          ...campaign,
          metrics: {
-           impressions: campaign.metrics?.impressions || 0,
+           impressions: impressions,
            clicks: campaign.metrics?.clicks || 0,
            cost_micros: campaign.metrics?.cost_micros || 0,
            conversions: campaign.metrics?.conversions || 0,
@@ -65,7 +66,7 @@ function setCachedData(cacheKey: string, data: any) {
      } else {
        // Agregar dados à campanha existente
        const existing = campaignMap.get(campaignId);
-       existing.metrics.impressions += campaign.metrics?.impressions || 0;
+       existing.metrics.impressions += impressions;
        existing.metrics.clicks += campaign.metrics?.clicks || 0;
        existing.metrics.cost_micros += campaign.metrics?.cost_micros || 0;
        existing.metrics.conversions += campaign.metrics?.conversions || 0;
@@ -81,32 +82,33 @@ function setCachedData(cacheKey: string, data: any) {
    });
 
    // Calcular métricas médias e retornar array otimizado
-   return Array.from(campaignMap.values()).map(campaign => {
-     const metrics = {
-       ...campaign.metrics,
-       average_cpc: campaign.cpc_count > 0 ? campaign.cpc_sum / campaign.cpc_count : 0,
-       ctr: campaign.ctr_count > 0 ? campaign.ctr_sum / campaign.ctr_count : 0,
-       average_cpm: campaign.cpm_count > 0 ? campaign.cpm_sum / campaign.cpm_count : 0,
-       conversions_from_interactions_rate: campaign.conv_rate_count > 0 ? campaign.conv_rate_sum / campaign.conv_rate_count : 0
-     };
+   return Array.from(campaignMap.values())
+     .map(campaign => {
+       const metrics = {
+         ...campaign.metrics,
+         average_cpc: campaign.cpc_count > 0 ? campaign.cpc_sum / campaign.cpc_count : 0,
+         ctr: campaign.ctr_count > 0 ? campaign.ctr_sum / campaign.ctr_count : 0,
+         average_cpm: campaign.cpm_count > 0 ? campaign.cpm_sum / campaign.cpm_count : 0,
+         conversions_from_interactions_rate: campaign.conv_rate_count > 0 ? campaign.conv_rate_sum / campaign.conv_rate_count : 0
+       };
 
-     // Calcular métricas derivadas
-     const cost = metrics.cost_micros / 1000000; // Converter micros para reais
-     const ctr_percentage = metrics.ctr * 100;
-     const cpm = metrics.average_cpm / 1000; // Converter para formato padrão
+       // Calcular métricas derivadas
+       const cost = metrics.cost_micros / 1000000; // Converter micros para reais
+       const ctr_percentage = metrics.ctr * 100;
+       const cpm = metrics.average_cpm / 1000; // Converter para formato padrão
 
-     return {
-       ...campaign,
-       metrics: {
-         ...metrics,
-         cost_formatted: cost,
-         ctr_percentage,
-         cpm_formatted: cpm,
-         // Calcular ROI se houver conversões
-         roi: metrics.conversions > 0 ? ((metrics.conversions * 100) / cost) : 0
-       }
-     };
-   });
+       return {
+         ...campaign,
+         metrics: {
+           ...metrics,
+           cost_formatted: cost,
+           ctr_percentage,
+           cpm_formatted: cpm,
+           // Calcular ROI se houver conversões
+           roi: metrics.conversions > 0 ? ((metrics.conversions * 100) / cost) : 0
+         }
+       };
+     });
  }
 
  // Função otimizada para obter dados das campanhas
@@ -154,7 +156,7 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
           metrics.average_cpm,
           metrics.conversions_from_interactions_rate
         FROM campaign
-        WHERE campaign.status = 'ENABLED'
+        WHERE campaign.status IN ('ENABLED', 'PAUSED')
           AND segments.date BETWEEN '${fromDate}' AND '${toDate}'
           AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
         ORDER BY campaign.name, segments.date
@@ -184,7 +186,7 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
            metrics.average_cpm,
            metrics.conversions_from_interactions_rate
          FROM campaign
-         WHERE campaign.status = 'ENABLED'
+         WHERE campaign.status IN ('ENABLED', 'PAUSED')
            AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
          ORDER BY campaign.name
          LIMIT 10000
@@ -197,6 +199,7 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
               console.log('📊 Resultado da query:', {
        totalCampaigns: campaigns.length,
        uniqueCampaigns: new Set(campaigns.map(c => c.campaign?.id)).size,
+       campaignsWithImpressions: campaigns.filter(c => (c.metrics?.impressions || 0) > 0).length,
        campaigns: campaigns.map(c => ({ 
          name: c.campaign?.name, 
          id: c.campaign?.id,
@@ -246,7 +249,7 @@ async function getCampaignsData(customerId?: string, dateFrom?: string, dateTo?:
             metrics.average_cpm,
             metrics.conversions_from_interactions_rate
           FROM campaign
-          WHERE campaign.status = 'ENABLED'
+          WHERE campaign.status IN ('ENABLED', 'PAUSED')
             AND campaign.advertising_channel_type IN ('SEARCH', 'DISPLAY', 'VIDEO', 'SHOPPING')
           ORDER BY campaign.name
           LIMIT 10000
@@ -325,7 +328,8 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    const { customerId, dateFrom, dateTo, type = 'campaigns' } = validatedParams;
+    const { customerId, dateFrom, dateTo, type = 'campaigns', page = 1, limit = 20 } = validatedParams;
+    const offset = (page - 1) * limit;
 
     let data;
     
@@ -346,10 +350,34 @@ export async function GET(request: Request) {
         );
     }
 
+    // Aplicar paginação se for tipo 'campaigns'
+    let paginatedData = data;
+    let pagination = null;
+    
+    if (type === 'campaigns' && Array.isArray(data)) {
+      const totalItems = data.length;
+      const totalPages = Math.ceil(totalItems / limit);
+      
+      // Aplicar paginação apenas se há dados
+      if (totalItems > 0) {
+        paginatedData = data.slice(offset, offset + limit);
+      }
+      
+      pagination = {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      };
+    }
+
     // Configuração de cache para Vercel
     const response = NextResponse.json({
       success: true,
-      data,
+      data: paginatedData,
+      pagination,
       timestamp: new Date().toISOString(),
       type
     });

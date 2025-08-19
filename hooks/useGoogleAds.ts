@@ -17,7 +17,7 @@ interface UseGoogleAdsReturn {
   data: GoogleAdsData | null;
   loading: boolean;
   error: GoogleAdsError | null;
-  fetchCampaigns: (customerId?: string, dateFrom?: string, dateTo?: string) => Promise<void>;
+  fetchCampaigns: (customerId?: string, dateFrom?: string, dateTo?: string, page?: number, limit?: number) => Promise<void>;
   fetchAds: (customerId?: string) => Promise<void>;
   fetchKeywords: (customerId?: string) => Promise<void>;
   executeCustomQuery: (query: string, customerId?: string) => Promise<void>;
@@ -37,7 +37,9 @@ export function useGoogleAds(): UseGoogleAdsReturn {
     type: 'campaigns' | 'ads' | 'keywords',
     customerId?: string,
     dateFrom?: string,
-    dateTo?: string
+    dateTo?: string,
+    page?: number,
+    limit?: number
   ) => {
     setLoading(true);
     setError(null);
@@ -52,6 +54,12 @@ export function useGoogleAds(): UseGoogleAdsReturn {
       }
       if (dateTo) {
         params.append('dateTo', dateTo);
+      }
+      if (page) {
+        params.append('page', page.toString());
+      }
+      if (limit) {
+        params.append('limit', limit.toString());
       }
 
       const response = await fetch(`/api/google-ads/campaigns?${params}`);
@@ -74,8 +82,8 @@ export function useGoogleAds(): UseGoogleAdsReturn {
     }
   }, []);
 
-  const fetchCampaigns = useCallback((customerId?: string, dateFrom?: string, dateTo?: string) => 
-    fetchData('campaigns', customerId, dateFrom, dateTo), []);
+  const fetchCampaigns = useCallback((customerId?: string, dateFrom?: string, dateTo?: string, page?: number, limit?: number) => 
+    fetchData('campaigns', customerId, dateFrom, dateTo, page, limit), []);
 
   const fetchAds = useCallback((customerId?: string) => 
     fetchData('ads', customerId), []);

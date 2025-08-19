@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { MessageCircle, X, Send, Bot, User, Minus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,8 +25,14 @@ export function FloatingChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Verificar se estamos na página de insights
-  const isInsightsPage = typeof window !== 'undefined' && window.location.pathname === '/insights'
+  // Verificar se estamos na página de insights ou login
+  const pathname = usePathname()
+  
+  const isInsightsPage = pathname === '/insights'
+  const isLoginPage = pathname === '/login'
+  
+  // Debug
+  console.log('FloatingChat - pathname:', pathname, 'isLoginPage:', isLoginPage)
 
   // Auto-scroll para a última mensagem
   const scrollToBottom = () => {
@@ -113,8 +120,9 @@ export function FloatingChat() {
     })
   }
 
-  // Não renderizar na página de insights
-  if (isInsightsPage) {
+  // Não renderizar na página de insights ou login
+  if (isInsightsPage || isLoginPage) {
+    console.log('FloatingChat - Não renderizando na página:', pathname)
     return null
   }
 

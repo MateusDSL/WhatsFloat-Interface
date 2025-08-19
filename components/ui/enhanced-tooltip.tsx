@@ -208,8 +208,8 @@ export const GoogleAdsTooltip: React.FC<{ active?: boolean; payload?: any[]; lab
             <DollarSign className="w-4 h-4 text-green-600" /> : 
             <TrendingUp className="w-4 h-4 text-blue-600" />,
           formatter: (value) => entry.name === 'Investimento' 
-            ? `R$ ${(Number(value) * 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-            : `${Number(value).toFixed(2)} conversões`
+            ? `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+            : `${Number(value).toFixed(2)}`
         }))}
       />
     </div>
